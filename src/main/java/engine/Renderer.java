@@ -38,6 +38,7 @@ public class Renderer {
         this.camera = cam;
         sun = new Sun(new Vector3f(5, 5, 5), 20);
     }
+    // test 2
     /// Caculate all vertecies 
     /// and put them into the Buffer
     ///
