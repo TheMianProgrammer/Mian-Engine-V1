@@ -1,0 +1,42 @@
+package obj;
+
+import org.joml.Vector3f;
+
+public class Physics {
+    Entity entity;
+
+    float mass = 1f;
+    float friction = 0.1f;
+    Vector3f gravity = new Vector3f(0, -9.81f, 0);
+
+    Vector3f velocity = new Vector3f();
+    Vector3f force = new Vector3f();
+
+    // Hitbox
+    Hitbox hitbox;
+
+    public void Collides(Hitbox target, Vector3f position)
+    {
+        if(hitbox.collides(target, entity.Position, position)) {
+            velocity.y = 0;
+        }
+    }
+
+    public Physics(Entity entity, Hitbox hitbox) {
+        this.entity = entity;
+        this.hitbox = hitbox;
+    }
+
+    public void addForce(Vector3f f) {
+        force.add(new Vector3f(f).div(mass)); // a = F/m
+    }
+
+    public void update(float deltaTime) {
+        Vector3f acceleration = new Vector3f(force).div(mass);
+        acceleration.add(gravity);
+        velocity.add(new Vector3f(acceleration).mul(deltaTime));
+        velocity.mul(1f - friction * deltaTime);
+        entity.Translate(new Vector3f(velocity).mul(deltaTime));
+        force.zero();
+    }
+}

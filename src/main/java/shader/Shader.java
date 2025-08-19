@@ -5,6 +5,7 @@ import java.nio.FloatBuffer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
+import org.joml.Vector3f;
 import org.lwjgl.opengl.GL20;
 
 public class Shader {
@@ -40,9 +41,9 @@ public class Shader {
         GL20.glUniform2f(loc, x, y);
     }
 
-    public void setUniform3f(String name, float x, float y, float z) {
+    public void setUniform3f(String name, Vector3f pos) {
         int loc = GL20.glGetUniformLocation(programId, name);
-        GL20.glUniform3f(loc, x, y, z);
+        GL20.glUniform3f(loc, pos.x, pos.y, pos.z);
     }    
 
     public void setUniformMat4(String name, FloatBuffer matrix) {

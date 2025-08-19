@@ -11,6 +11,8 @@ class Camera{
     private float pitch = 0;
     private float yaw = -90;
 
+    public float deltaTime;
+
     public Matrix4f getViewMatrix() {
         return new Matrix4f().lookAt(position, target, new Vector3f(0, 1, 0));
     }
@@ -22,8 +24,9 @@ class Camera{
 
     public void translate (Vector3f position)
     {
-        this.position.add(position);
-        this.target.add(position);
+        Vector3f move = position.mul(deltaTime);
+        this.position.add(move);
+        this.target.add(move);
     }
     public void translateForward(float distance) {
         float radYaw = (float)Math.toRadians(yaw);
@@ -32,8 +35,9 @@ class Camera{
             0,
             (float)Math.sin(radYaw) * distance
         );
-        position.add(dir);
-        target.add(dir);
+        Vector3f move = new Vector3f(dir).mul(deltaTime);
+        position.add(move);
+        target.add(move);
     }
 
     public void translateRight(float distance) {
@@ -43,18 +47,21 @@ class Camera{
             0,
             (float)Math.sin(radYaw) * distance
         );
-        position.add(dir);
-        target.add(dir);
+        Vector3f move = new Vector3f(dir).mul(deltaTime); // clone + scale
+        position.add(move);
+        target.add(move);
     }
-
 
     public void rotate(float deltaPitch, float deltaYaw)
     {
+        deltaPitch*=deltaTime;
+        deltaYaw *= deltaTime;
+
         pitch += deltaPitch;
         yaw += deltaYaw;
 
         if(pitch > 89) pitch = 89;
-        // if(yaw < -89) yaw = -89;
+        if(pitch < -89)pitch = -89;
 
         Vector3f direction = new Vector3f();
         direction.x = (float) (Math.cos(Math.toRadians(yaw)) * Math.cos(Math.toRadians(pitch)));
@@ -62,6 +69,7 @@ class Camera{
         direction.z = (float) (Math.sin(Math.toRadians(yaw)) * Math.cos(Math.toRadians(pitch)));
 
         direction.normalize();
-        target = new Vector3f(position).add(direction);
+        Vector3f rotation =  new Vector3f(position).add(direction);
+        target = rotation;
     }
 }
