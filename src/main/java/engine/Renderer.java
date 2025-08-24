@@ -1,34 +1,46 @@
 package engine;
 
 import java.io.IOException;
+import java.nio.Buffer;
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.joml.AxisAngle4f;
 import org.joml.Matrix4f;
-import org.joml.Vector2f;
+import org.joml.Quaternionf;
+import org.joml.Quaternionfc;
 import org.joml.Vector3f;
-import org.joml.Vector4f;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.glfw.GLFW;
+import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL15;
-import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.system.MemoryStack;
 
+import engine.render.BufferBuilder;
+import engine.render.ColorBuffer;
+import engine.render.LightBuffer;
+import engine.render.NormalBuffer;
+import engine.render.UVBuffer;
+import engine.render.VertexBuffer;
 import lightning.Ray;
 import lightning.Sun;
 import obj.Entity;
 import shader.Shader;
 import text.Text;
+import texture.Texture;
 
 public class Renderer {
+    private final List<BufferBuilder> bufferBuilders = new ArrayList<>();
+    
+    public Texture defaulTexture;
+
     Shader shader;
+    Shader depthShader;
     Sun sun;
 
     public Map<Entity, float[]> ExposureEntities = new HashMap<>();
@@ -49,78 +61,36 @@ public class Renderer {
     public Renderer(Camera cam, Window window)
     {
         this.camera = cam;
-        sun = new Sun(new Vector3f(20, 50, 20), 50);
-        sun.attenuation = 40;
+        sun = new Sun(new Vector3f(20, 50, 20), 1);
+        sun.attenuation = 1;
         this.EngineWindow = window;
+        
+        bufferBuilders.add(new VertexBuffer());
+        bufferBuilders.add(new ColorBuffer());
+        bufferBuilders.add(new NormalBuffer());
+        bufferBuilders.add(new UVBuffer());
+
+        // LightBuffer lightBuffer = new LightBuffer();
+        // lightBuffer.renderer = this;
+        // bufferBuilderas.add(lightBuffer);
     }
-    /// Caculate all vertecies 
-    /// and put them into the Buffer
-    ///
-    /// ```
-    /// VertexPosition: 0
-    /// Type: Vector3
-    /// ```
-    void CaculateVerteciesBuffer(Entity entity)
+    public void initEntity(Entity entity)
     {
-        List<Float> allVertices = new ArrayList<>();
-        for(Triangle t : entity.mesh)
-            for(float v : t.getVertices()) allVertices.add(v);
+        if(entity.vao == 0)
+            entity.vao = GL30.glGenVertexArrays();
 
-        float[] verts = new float[allVertices.size()];
-        for (int i = 0; i < allVertices.size(); i++) verts[i] = allVertices.get(i);
+        // CaculateLightBuffer(entity);
 
-        vbo = GL15.glGenBuffers();
-        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
-        FloatBuffer vertexBuffer = BufferUtils.createFloatBuffer(verts.length);
-        vertexBuffer.put(verts).flip();
-        GL15.glBufferData(GL15.GL_ARRAY_BUFFER, vertexBuffer, GL15.GL_STATIC_DRAW);
+        GL30.glBindVertexArray(entity.vao);
 
-        // location=0 → positions
-        GL20.glEnableVertexAttribArray(0);
-        GL20.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, 3 * Float.BYTES, 0);
-    }
-
-    /// Caculate all Colors
-    /// and put them into the Buffer
-    /// ```
-    /// VertexPosition: 1
-    /// Type: Vector3
-    /// ```
-    void CaculateColorBuffer(Entity entity)
-    {
-        List<Float> allColors = new ArrayList<>();
-        for (Triangle tri : entity.mesh) {
-            Vector3f c = tri.color;
-            // normalize from 0..255 to 0..1 if user used 255 values
-            float rx = c.x > 1f ? c.x / 255f : c.x;
-            float ry = c.y > 1f ? c.y / 255f : c.y;
-            float rz = c.z > 1f ? c.z / 255f : c.z;
-            for (int i = 0; i < 3; i++) {
-                allColors.add(rx);
-                allColors.add(ry);
-                allColors.add(rz);
-            }
+        for(BufferBuilder builder : bufferBuilders)
+        {
+            builder.build(entity);
         }
 
-        float[] colors = new float[allColors.size()];
-        for (int i = 0; i < allColors.size(); i++) colors[i] = allColors.get(i);
-
-        entity.colorVbo = GL15.glGenBuffers();
-        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, entity.colorVbo);
-        FloatBuffer colorBuffer = BufferUtils.createFloatBuffer(colors.length);
-        colorBuffer.put(colors).flip();
-        GL15.glBufferData(GL15.GL_ARRAY_BUFFER, colorBuffer, GL15.GL_STATIC_DRAW);
-
-        // layout(location = 1) vec3 color
-        GL20.glEnableVertexAttribArray(1);
-        GL20.glVertexAttribPointer(1, 3, GL11.GL_FLOAT, false, 3 * Float.BYTES, 0);
+        GL30.glBindVertexArray(0);
+        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
     }
-    /// Caculate the Lights
-    /// and put them into the Buffer
-    /// ```
-    /// VertexPosition: 3
-    /// Type: Float
-    /// ```
     void CaculateLightBuffer(Entity entity)
     {
         List<Float> strength = new ArrayList<>();
@@ -159,171 +129,59 @@ public class Renderer {
         float[] strengthArray = new float[strength.size()];
         for(int i = 0; i < strength.size(); i++) strengthArray[i] = strength.get(i);
         ExposureEntities.put(entity, strengthArray);
-
-        // GL30.glBindVertexArray(entity.vao);
-// 
-        // // Mach platz auf der GPU
-        // entity.lightVbo = GL15.glGenBuffers();
-        // GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, entity.lightVbo);
-        // FloatBuffer buffer = BufferUtils.createFloatBuffer(strengthArray.length);
-        // buffer.put(strengthArray).flip();
-        // GL15.glBufferData(GL15.GL_ARRAY_BUFFER, buffer, GL15.GL_STATIC_DRAW);
-// 
-        // // VertexAttribPointer, location = 3
-        // GL20.glEnableVertexAttribArray(3);
-        // GL20.glVertexAttribPointer(3, 1, GL11.GL_FLOAT, false, Float.BYTES, 0);
     }
-
-    /// Caculate the Normals
-    /// and put them into the Buffer
-    /// ```
-    /// VertexPosition: 2
-    /// Type: Vector3
-    /// ```
-    void CaculateNormalBuffer(Entity entity)
-    {
-        Map<Vector3f, Vector3f> vertexNormals = new HashMap<>(new IdentityHashMap<>()); // IdentityMap für richtige Keys
-        for (Triangle t : entity.mesh) {
-            // Bekomme die kanten
-            Vector3f edge1 = new Vector3f(t.v2).sub(t.v1);
-            Vector3f edge2 = new Vector3f(t.v3).sub(t.v1);
-            // Bekomme die richtung der Kanten
-            Vector3f triNormal = edge1.cross(edge2, new Vector3f()).normalize();
-
-            // Mach es für die Liste verwendbar
-            vertexNormals.putIfAbsent(t.v1, new Vector3f());
-            vertexNormals.putIfAbsent(t.v2, new Vector3f());
-            vertexNormals.putIfAbsent(t.v3, new Vector3f());
-
-            // Pack es in die Liste
-            vertexNormals.get(t.v1).add(triNormal);
-            vertexNormals.get(t.v2).add(triNormal);
-            vertexNormals.get(t.v3).add(triNormal);
-        }
-        // Normalen normalisieren
-        for (Vector3f n : vertexNormals.values()) n.normalize();
-
-        // Normale für VBO in Reihenfolge der Dreiecke
-        List<Float> allNormals = new ArrayList<>();
-        for (Triangle t : entity.mesh) {
-            Vector3f n1 = vertexNormals.get(t.v1);
-            Vector3f n2 = vertexNormals.get(t.v2);
-            Vector3f n3 = vertexNormals.get(t.v3);
-
-            allNormals.add(n1.x); allNormals.add(n1.y); allNormals.add(n1.z);
-            allNormals.add(n2.x); allNormals.add(n2.y); allNormals.add(n2.z);
-            allNormals.add(n3.x); allNormals.add(n3.y); allNormals.add(n3.z);
-        }
-
-        // ---- Normals VBO ----
-        float[] normalFloats = new float[allNormals.size()];
-        for (int i = 0; i < allNormals.size(); i++) normalFloats[i] = allNormals.get(i);
-
-        entity.normalVbo = GL15.glGenBuffers();
-        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, entity.normalVbo);
-        FloatBuffer buffer1 = BufferUtils.createFloatBuffer(normalFloats.length);
-        buffer1.put(normalFloats).flip();
-        GL15.glBufferData(GL15.GL_ARRAY_BUFFER, buffer1, GL15.GL_STATIC_DRAW);
-
-        GL20.glEnableVertexAttribArray(2);
-        GL20.glVertexAttribPointer(2, 3, GL11.GL_FLOAT, false, 3*Float.BYTES, 0);
-    }
-    void CaculateUVBuffer(Entity entity) {
-        List<Float> allUVs = new ArrayList<>();
-        for (Triangle t : entity.mesh) {
-            allUVs.add(t.uv1.x); allUVs.add(t.uv1.y);
-            allUVs.add(t.uv2.x); allUVs.add(t.uv2.y);
-            allUVs.add(t.uv3.x); allUVs.add(t.uv3.y);
-        }
-
-        float[] uvs = new float[allUVs.size()];
-        for (int i = 0; i < allUVs.size(); i++) uvs[i] = allUVs.get(i);
-
-        int uvVbo = GL15.glGenBuffers();
-        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, uvVbo);
-        FloatBuffer uvBuffer = BufferUtils.createFloatBuffer(uvs.length);
-        uvBuffer.put(uvs).flip();
-        GL15.glBufferData(GL15.GL_ARRAY_BUFFER, uvBuffer, GL15.GL_STATIC_DRAW);
-
-        // location=3 → uv
-        GL20.glEnableVertexAttribArray(4);
-        GL20.glVertexAttribPointer(4, 2, GL11.GL_FLOAT, false, 2 * Float.BYTES, 0);
-    }
-
-    void CaculateFontBuffer()
-    {
-        int VertecieCount = 0;
-        List<float[]> Fonts = new ArrayList<>();
-        for(Text text : texts)
-        {
-            Fonts.add(text.getVertecies());
-            VertecieCount += text.getVertecies().length;
-        }
-
-        float[] FontVertecies = new float[VertecieCount];
-        for(int i = 0; i < Fonts.size(); i++)
-        {
-            for(float Vertecie : Fonts.get(i))
-            {
-                FontVertecies[i] = Vertecie;
-            }
-        }
-        fontVbo = GL15.glGenBuffers();
-        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, fontVbo);
-        FloatBuffer fontBuffer = BufferUtils.createFloatBuffer(VertecieCount);
-        fontBuffer.put(FontVertecies).flip();
-        GL15.glBufferData(GL15.GL_ARRAY_BUFFER, fontBuffer, GL15.GL_STATIC_DRAW);
-
-        GL20.glEnableVertexAttribArray(3);
-        GL20.glVertexAttribPointer(3, 3, GL11.GL_FLOAT, false, Float.BYTES, 0);
-    }
-
     public void init()
     {
         try {
             shader = new Shader("assets/shader/basic/vertex.vert", "assets/shader/basic/fragment.frag");
+            depthShader = new Shader("assets/shader/basic/depth/depth.vert", "assets/shader/basic/depth/depth.frag");
         } catch (IOException e) {
             e.printStackTrace();
             System.exit(-1); // stop program if shader can't be loaded
         }
-        // texts.add(new Text("Hey"));
 
         GL11.glEnable(GL11.GL_DEPTH_TEST);
         GL11.glDepthFunc(GL11.GL_LESS);
         GL11.glEnable(GL11.GL_CULL_FACE); 
-        GL11.glCullFace(GL11.GL_FRONT);
+        GL11.glCullFace(GL11.GL_BACK);
         GL11.glFrontFace(GL11.GL_CCW);
-
 
         vao = GL30.glGenVertexArrays();
         GL30.glBindVertexArray(vao); // ← vor jedem Buffer-Aufruf
         
         for(Entity entity : Entites)
         {
-            // GL30.glBindVertexArray(entity.vao);
-            // CaculateVerteciesBuffer(entity);
-            // CaculateColorBuffer(entity);
-            // CaculateLightBuffer(entity);
-            // CaculateNormalBuffer(entity);
-            // CaculateUVBuffer(entity);
-            // GL30.glBindVertexArray(0);
             if(entity.vao == 0) entity.initGLBuffers();
         }
-       // CaculateFontBuffer();
         
         // unbind array buffer and VAO (good hygiene)
         GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         GL30.glBindVertexArray(0);
     }
-
+    public static FloatBuffer toFloatBuffer(Matrix4f mat) {
+        FloatBuffer fb = FloatBuffer.allocate(16);
+        mat.get(fb);
+        fb.flip();
+        return fb;
+    }
     public void render(Long window)
     {
         shader.use();
         for(Entity entity : Entites)
         {
             InitShaderVariables(entity);
+            GL30.glBindVertexArray(entity.vao);
+            GL11.glDrawArrays(GL11.GL_TRIANGLES, 0, entity.mesh.length*3);
             // CaculateLightBuffer(entity);
         }
+
+        // Shadows
+        sun.UpdateShadows();
+        depthShader.use();
+        for (Entity e : Entites){
+            e.renderDepth(depthShader, sun.getLightSpaceMatrix());
+        }
+        GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
 
         GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         GL30.glBindVertexArray(0);
@@ -341,13 +199,29 @@ public class Renderer {
         shader.setUniform2f("res", EngineWindow.getWidth(), EngineWindow.getHeight());
         shader.setUniform3f("sunPos", sun.Position);
         shader.setUniform3f("viewSource", camera.position);
+        shader.setUniform1f("exposure", 1);
 
         Matrix4f model = new Matrix4f();
+
+        Quaternionf jq = new Quaternionf(
+            entity.Rotation.x,
+            entity.Rotation.y,
+            entity.Rotation.z,
+            entity.Rotation.w
+        );
+
         model
-            .translate(entity.Position)
+        .identity()
+        .translate(new Vector3f(
+                entity.Position.x + entity.RenderOffset.x,
+                entity.Position.y + entity.RenderOffset.y,
+                entity.Position.z + entity.RenderOffset.z
+                ))
+            .rotate(jq)
             .scale(entity.Scale);
         Matrix4f view = camera.getViewMatrix(); 
-        Matrix4f projection = camera.getProjectionMatrix((float)Math.toRadians(60), EngineWindow.getWidth()/EngineWindow.getHeight(), 0.1f, 2000f);
+        float aspect = (float)EngineWindow.getWidth() / (float)EngineWindow.getHeight();
+        Matrix4f projection = camera.getProjectionMatrix((float)Math.toRadians(77), aspect, 0.1f, 2000f);
 
         try(MemoryStack stack = MemoryStack.stackPush()) {
             FloatBuffer fb = stack.mallocFloat(16);
@@ -356,20 +230,17 @@ public class Renderer {
             shader.setUniformMat4("view", view.get(fb));
             shader.setUniformMat4("projection", projection.get(fb));
         }
-        
-        GL30.glBindVertexArray(entity.vao);        
-        GL11.glDrawArrays(GL11.GL_TRIANGLES, 0, entity.mesh.length * 3);
     }
 
     public void UpdateModel(Entity entity)
     {
-        Matrix4f model = new Matrix4f().translate(entity.Position).scale(entity.Scale);
+        // Matrix4f model = new Matrix4f().translate(entity.Position).scale(entity.Scale);
     }
     public void UpdateEntityExposure(Entity entity)
     {
         CaculateLightBuffer(entity);
     }
-    public float getExposure(int i, Entity entity) {
+    public float getExposure(int i, Entity entity) {        
         return ExposureEntities.get(entity)[i];    
     }
 }

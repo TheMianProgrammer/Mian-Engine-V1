@@ -44,7 +44,7 @@ public class Window {
 
         GLFW.glfwMakeContextCurrent(window);
         GLFW.glfwSwapInterval(1); // V-Sync enabled → FPS capped auf Monitor Refresh (~60Hz)
-        GLFW.glfwSwapInterval(0); // V-Sync disabled → keine Cap
+        // GLFW.glfwSwapInterval(0); // V-Sync disabled → keine Cap
         GL.createCapabilities();
     }
 

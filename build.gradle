@@ -8,18 +8,20 @@ repositories {
 }
 
 dependencies {
-    implementation "org.lwjgl:lwjgl:3.3.1"
-    implementation "org.lwjgl:lwjgl-glfw:3.3.1"
-    implementation "org.lwjgl:lwjgl-opengl:3.3.1"
-    implementation "org.lwjgl:lwjgl-stb:3.3.1"   // <-- STB Truetype
+    implementation "org.lwjgl:lwjgl:3.3.6"
+    implementation "org.lwjgl:lwjgl-glfw:3.3.6"
+    implementation "org.lwjgl:lwjgl-opengl:3.3.6"
+    implementation "org.lwjgl:lwjgl-stb:3.3.6"   // <-- STB Truetype
     
 
-    runtimeOnly "org.lwjgl:lwjgl:3.3.1:natives-windows"
-    runtimeOnly "org.lwjgl:lwjgl-glfw:3.3.1:natives-windows"
-    runtimeOnly "org.lwjgl:lwjgl-opengl:3.3.1:natives-windows"
-    runtimeOnly "org.lwjgl:lwjgl-stb:3.3.1:natives-windows" // ← für STB
+    runtimeOnly "org.lwjgl:lwjgl:3.3.6:natives-windows"
+    runtimeOnly "org.lwjgl:lwjgl-glfw:3.3.6:natives-windows"
+    runtimeOnly "org.lwjgl:lwjgl-opengl:3.3.6:natives-windows"
+    runtimeOnly "org.lwjgl:lwjgl-stb:3.3.6:natives-windows" // ← für STB
 
     implementation "org.joml:joml:1.10.5"
+    implementation "com.github.stephengold:jbullet:1.0.3"
+    implementation "javax.vecmath:vecmath:1.5.2"
 }
 
 application {

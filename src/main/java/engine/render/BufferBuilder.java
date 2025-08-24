@@ -1,6 +1,7 @@
 package engine.render;
 
-import javax.swing.text.html.parser.Entity;
+import engine.Triangle;
+import obj.Entity;
 
 public interface BufferBuilder {
     void build(Entity entity);

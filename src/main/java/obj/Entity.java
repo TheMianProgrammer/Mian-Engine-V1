@@ -4,32 +4,39 @@ import java.io.File;
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Vector;
 
-import javax.xml.crypto.dsig.Transform;
+import javax.vecmath.Quat4f;
 
+import org.joml.Matrix4f;
+import org.joml.Vector2f;
 import org.joml.Vector3f;
 import org.lwjgl.BufferUtils;
-import org.lwjgl.glfw.GLFW;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
 
+import com.bulletphysics.dynamics.RigidBody;
+
+import debug.GLMemoryTracker;
 import engine.Renderer;
 import engine.Triangle;
+import shader.Shader;
 import texture.Texture;
 
 public class Entity{
 
+    public RigidBody body;
 
     public Vector3f Position;
+    public Vector3f RenderOffset;
+    public Quat4f Rotation;
     public Vector3f Scale;
     public Vector3f Color;
     public float Specular = 16;
 
     String MeshPath;
-    Renderer Renderer;
+    public Renderer ERenderer;
 
     public int vao;
     public int vbo;
@@ -41,14 +48,37 @@ public class Entity{
 
     public Triangle[] mesh;
     public float[] vertecies;
+    private float[] baseUVs;
 
-    public Entity(Vector3f position, Vector3f Color, Vector3f Scale, Renderer renderer)
+    public boolean isStatic = false;
+
+    public Entity(Vector3f position, Vector3f Color, Vector3f Scale, Renderer Renderer)
     {
         this.Position = position;
+        this.Rotation = new Quat4f(0, 0, 0, 1);
         this.Color = Color;
         this.Scale = Scale;
-        this.Renderer = renderer;
+        this.RenderOffset = new Vector3f(0, 0, 0);
+        this.ERenderer = Renderer;
     }
+    public void renderDepth(Shader depthShader, Matrix4f lightSpaceMatrix) {
+        depthShader.setUniformMat4("model", Renderer.toFloatBuffer(getModelMatrix()));
+        depthShader.setUniformMat4("lightSpaceMatrix", Renderer.toFloatBuffer(lightSpaceMatrix));
+
+        GL30.glBindVertexArray(vao);
+        GL11.glDrawArrays(GL11.GL_TRIANGLES, 0, mesh.length * 3);
+        GL30.glBindVertexArray(0);
+    }
+    public Matrix4f getModelMatrix() {
+        Matrix4f model = new Matrix4f().identity();
+
+        model.translate(Position);
+        model.rotate(new org.joml.Quaternionf(Rotation.x, Rotation.y, Rotation.z, Rotation.w));
+        model.scale(Scale);
+
+        return model;
+    }
+
     public void update()
     {
         
@@ -56,11 +86,12 @@ public class Entity{
     void InitVertecies()
     {
         vertecies = getFlattenVertecies();
+        baseUVs = getFlattenedUVs();
     }
     public void Translate(Vector3f pos)
     {
         Position.add(pos);
-        Renderer.UpdateModel(this);
+        ERenderer.UpdateModel(this);
     }
     public void LoadMesh(String path)
     {
@@ -135,9 +166,9 @@ public class Entity{
     void CaculateExposureBuffer()
     {
         // --- Exposure Buffer ---
-        Renderer.UpdateEntityExposure(this);
+        ERenderer.UpdateEntityExposure(this);
         float[] exposureArray = new float[mesh.length*3];
-        for(int i=0;i<exposureArray.length;i++) exposureArray[i] = Renderer.getExposure(i, this); // Beispielwert
+        for(int i=0;i<exposureArray.length;i++) exposureArray[i] = ERenderer.getExposure(i, this); // Beispielwert
         GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, exposureVbo);
         FloatBuffer exposureBuffer = BufferUtils.createFloatBuffer(exposureArray.length);
         exposureBuffer.put(exposureArray).flip();
@@ -147,13 +178,14 @@ public class Entity{
     }
 
     public void initGLBuffers() {
+        /*
         vao = GL30.glGenVertexArrays();
         vbo = GL15.glGenBuffers();
         colorVbo = GL15.glGenBuffers();
         normalVbo = GL15.glGenBuffers();
         uvVbo = GL15.glGenBuffers();
         exposureVbo = GL15.glGenBuffers();
-
+        /*
         GL30.glBindVertexArray(vao);
 
         // Vertex buffer
@@ -194,27 +226,60 @@ public class Entity{
         GL20.glVertexAttribPointer(4, 2, GL11.GL_FLOAT, false, 2 * Float.BYTES, 0);
 
         GL30.glBindVertexArray(0);
-        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);*/
     }
-    public void TillTexture(Vector3f TillFactor)
+    public void TillTexture(Vector2f tilling)
     {
-        for(Triangle t : mesh)
+        if(baseUVs == null)
         {
-            t.uv1.mul(TillFactor.x);
-            t.uv2.mul(TillFactor.y);
-            t.uv3.mul(TillFactor.z);
+            baseUVs = getFlattenedUVs();
         }
+
+        float[] newUVs = new float[baseUVs.length];
+        for(int i = 0; i < baseUVs.length; i+=2){
+            newUVs[i + 0] = baseUVs[i + 0] * tilling.x;
+            newUVs[i + 1] = baseUVs[i + 1] * tilling.y;
+        }
+
+        applyUVsToMesh(newUVs);
+        updateUVBuffer(newUVs);
+    }
+
+    private void applyUVsToMesh(float[] uvs)
+    {
+        int idx = 0;
+        for(int t = 0; t < mesh.length; t++ ){
+            mesh[t].uv1.x = uvs[idx++]; mesh[t].uv1.y = uvs[idx++];
+            mesh[t].uv2.x = uvs[idx++]; mesh[t].uv2.y = uvs[idx++];
+            mesh[t].uv3.x = uvs[idx++]; mesh[t].uv3.y = uvs[idx++];
+        }
+    }
+    private void updateUVBuffer(float[] uvs)
+    {
+        if(uvVbo == 0) 
+            uvVbo = GL15.glGenBuffers();
+        
+        GL30.glBindVertexArray(vao);
+
+        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, uvVbo);
+        FloatBuffer buf = BufferUtils.createFloatBuffer(uvs.length);
+        buf.put(uvs).flip();
+        GL15.glBufferData(GL15.GL_ARRAY_BUFFER, buf, GL15.GL_STATIC_DRAW);
+
+        GL30.glEnableVertexAttribArray(4);
+        GL30.glVertexAttribPointer(4, 2, GL11.GL_FLOAT, false, 2 * Float.BYTES, 0);
+        
+        GLMemoryTracker.trackVBO(uvVbo, buf.capacity() * Float.BYTES, "uvVBO");
     }
 
     public void Activate(Texture texture)
     {
         texture.bind();
-        for(Triangle tri : mesh)
-        {
-            Triangle coloredTriangle = new Triangle(tri.v1, tri.v2, tri.v3, tri.uv1, tri.uv2, tri.uv3, new Vector3f(1));
-            Renderer.triangles.add(coloredTriangle);
+        for(Triangle tri : mesh) {
+            ERenderer.triangles.add(new Triangle(tri.v1, tri.v2, tri.v3, tri.uv1, tri.uv2, tri.uv3, tri.color));
         }
-        Renderer.Entites.add(this);
+        ERenderer.Entites.add(this);
+        ERenderer.initEntity(this);
     }
     public Vector3f[] getMeshVertecies() {
         Vector3f[] Verticies = new Vector3f[mesh.length * 3];

@@ -13,6 +13,7 @@ public enum KeyCode {
     K(GLFW.GLFW_KEY_K),
     L(GLFW.GLFW_KEY_L),
     I(GLFW.GLFW_KEY_I),
+    G(GLFW.GLFW_KEY_G),
     ESC(GLFW.GLFW_KEY_ESCAPE);
 
     public final int glfwKey;
