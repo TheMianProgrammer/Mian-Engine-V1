@@ -140,6 +140,13 @@ public class Renderer {
             System.exit(-1); // stop program if shader can't be loaded
         }
 
+        if(sun != null)
+            sun.GenerateShadowBuffer();
+        else {
+            sun = new Sun(new Vector3f(20, 50, 25), 1);
+            sun.GenerateShadowBuffer();
+        }
+
         GL11.glEnable(GL11.GL_DEPTH_TEST);
         GL11.glDepthFunc(GL11.GL_LESS);
         GL11.glEnable(GL11.GL_CULL_FACE); 

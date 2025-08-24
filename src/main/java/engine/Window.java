@@ -43,6 +43,7 @@ public class Window {
             throw new RuntimeException("Failed to create the GLFW window");
 
         GLFW.glfwMakeContextCurrent(window);
+        // GL.createCapabilities();
         GLFW.glfwSwapInterval(1); // V-Sync enabled → FPS capped auf Monitor Refresh (~60Hz)
         // GLFW.glfwSwapInterval(0); // V-Sync disabled → keine Cap
         GL.createCapabilities();

@@ -21,7 +21,6 @@ public class Sun{
     {
         this.strength = Strength;
         this.Position = Pos;
-        GenerateShadowBuffer();
     }
 
     public float getStrength(Vector3f object)
