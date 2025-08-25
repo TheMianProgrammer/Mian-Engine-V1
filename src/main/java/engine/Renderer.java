@@ -17,6 +17,7 @@ import org.lwjgl.BufferUtils;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.system.MemoryStack;
@@ -36,8 +37,6 @@ import texture.Texture;
 
 public class Renderer {
     private final List<BufferBuilder> bufferBuilders = new ArrayList<>();
-    
-    public Texture defaulTexture;
 
     Shader shader;
     Shader depthShader;
@@ -166,29 +165,57 @@ public class Renderer {
         GL30.glBindVertexArray(0);
     }
     public static FloatBuffer toFloatBuffer(Matrix4f mat) {
-        FloatBuffer fb = FloatBuffer.allocate(16);
+        FloatBuffer fb = BufferUtils.createFloatBuffer(16);
         mat.get(fb);
-        fb.flip();
         return fb;
     }
     public void render(Long window)
     {
+        // Shadows
+        GL30.glViewport(0, 0, 1024, 1024);
+        GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, sun.shadowFBO);
+        GL11.glClear(GL11.GL_DEPTH_BUFFER_BIT);
+
+        GL11.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
+        GL11.glPolygonOffset(2.0f, 4.0f);
+        GL11.glCullFace(GL11.GL_FRONT);
+
+        depthShader.use();
+        sun.UpdateShadows();
+
+        for (Entity e : Entites){
+            e.renderDepth(depthShader, sun.getLightSpaceMatrix());
+
+            GL30.glBindVertexArray(e.vao);
+            GL11.glDrawArrays(GL11.GL_TRIANGLES, 0, e.mesh.length * 3);
+        }
+
+        GL11.glCullFace(GL11.GL_BACK);
+        GL11.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
+        GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
+
+
+        GL11.glViewport(0, 0, EngineWindow.getWidth(), EngineWindow.getHeight());
+        clear();
+
         shader.use();
+        
+        GL13.glActiveTexture(GL13.GL_TEXTURE1);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, sun.shadowMap);
+
         for(Entity entity : Entites)
         {
+            GL13.glActiveTexture(GL13.GL_TEXTURE0);
+            if(entity.texture != null)
+                entity.texture.bind();
+            else
+                GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+
             InitShaderVariables(entity);
             GL30.glBindVertexArray(entity.vao);
             GL11.glDrawArrays(GL11.GL_TRIANGLES, 0, entity.mesh.length*3);
             // CaculateLightBuffer(entity);
         }
-
-        // Shadows
-        sun.UpdateShadows();
-        depthShader.use();
-        for (Entity e : Entites){
-            e.renderDepth(depthShader, sun.getLightSpaceMatrix());
-        }
-        GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
 
         GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         GL30.glBindVertexArray(0);
@@ -200,13 +227,16 @@ public class Renderer {
     void InitShaderVariables(Entity entity)
     {
         shader.setUniform1f("time", (float)GLFW.glfwGetTime());
-        shader.setUniform1f("texture1", 0);
+        shader.setUniform1i("texture1", 0);
         shader.setUniform1f("sunPower", sun.strength);
+        shader.setUniform1f("exposure", 1);
         shader.setUniform1f("fSpecular", entity.Specular);
         shader.setUniform2f("res", EngineWindow.getWidth(), EngineWindow.getHeight());
+        shader.setUniform2f("shadowMapSize", 1024, 1024);
         shader.setUniform3f("sunPos", sun.Position);
         shader.setUniform3f("viewSource", camera.position);
-        shader.setUniform1f("exposure", 1);
+        shader.setUniformMat4("lightSpaceMatrix", Renderer.toFloatBuffer(sun.getLightSpaceMatrix()));
+        shader.setUniform1i("shadowMap", 1);
 
         Matrix4f model = new Matrix4f();
 

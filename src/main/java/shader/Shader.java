@@ -31,6 +31,12 @@ public class Shader {
         GL20.glDeleteShader(fragmentShader);
     }
 
+    public void setUniform1i(String name, int value) {
+        int loc = GL20.glGetUniformLocation(programId, name);
+        GL20.glUniform1i(loc, value);
+    }
+
+
     public void setUniform1f(String name, float value) {
         int loc = GL20.glGetUniformLocation(programId, name);
         GL20.glUniform1f(loc, value);

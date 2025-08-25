@@ -24,7 +24,8 @@ public class VertexBuffer implements BufferBuilder{
         float[] verts = new float[allVertices.size()];
         for (int i = 0; i < allVertices.size(); i++) verts[i] = allVertices.get(i);
 
-        entity.vbo = GL15.glGenBuffers();
+        if(entity.vbo == 0)
+            entity.vbo = GL15.glGenBuffers();
         GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, entity.vbo);
         FloatBuffer vertexBuffer = BufferUtils.createFloatBuffer(verts.length);
         vertexBuffer.put(verts).flip();

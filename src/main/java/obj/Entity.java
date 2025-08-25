@@ -12,6 +12,7 @@ import org.joml.Vector2f;
 import org.joml.Vector3f;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
@@ -45,6 +46,8 @@ public class Entity{
     public int normalVbo;
     public int exposureVbo;
     public int uvVbo;
+
+    public Texture texture;
 
     public Triangle[] mesh;
     public float[] vertecies;
@@ -144,11 +147,16 @@ public class Entity{
     public float[] getFlattenVertecies() {
         float[] verts = new float[mesh.length*9]; // 3 verts * 3 floats
         int idx = 0;
+        int triangles = 0;
         for(Triangle t : mesh) {
             verts[idx++] = t.v1.x; verts[idx++] = t.v1.y; verts[idx++] = t.v1.z;
             verts[idx++] = t.v2.x; verts[idx++] = t.v2.y; verts[idx++] = t.v2.z;
             verts[idx++] = t.v3.x; verts[idx++] = t.v3.y; verts[idx++] = t.v3.z;
+            triangles++;
         }
+        if(vbo == 0)
+            vbo = GL15.glGenBuffers();
+        GLMemoryTracker.SetTriangle(vbo, triangles);
         return verts;
     }
     public float[] getFlattenedColorsFixed(Vector3f meshColor) {
@@ -274,6 +282,8 @@ public class Entity{
 
     public void Activate(Texture texture)
     {
+        this.texture = texture;
+        GL13.glActiveTexture(GL13.GL_TEXTURE0);
         texture.bind();
         for(Triangle tri : mesh) {
             ERenderer.triangles.add(new Triangle(tri.v1, tri.v2, tri.v3, tri.uv1, tri.uv2, tri.uv3, tri.color));
