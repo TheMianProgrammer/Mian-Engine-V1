@@ -4,12 +4,14 @@ package debug;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+
 public class GLMemoryTracker {
     static class BufferInfo { int id; int size; String name; }
     static Map<Integer, BufferInfo> vbos = new ConcurrentHashMap<>();
     static Map<Integer, BufferInfo> textures = new ConcurrentHashMap<>();
     static Map<Integer, Integer> Triangles = new ConcurrentHashMap<>();
     static int totalTriangles = 0;
+    static int debugViewMode = 0;
 
     public static void trackVBO(int vboId, int size, String name) {
         if (vboId == 0 || size <= 0) return;

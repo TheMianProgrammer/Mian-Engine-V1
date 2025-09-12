@@ -15,6 +15,7 @@ import com.bulletphysics.collision.dispatch.CollisionConfiguration;
 import com.bulletphysics.collision.dispatch.CollisionDispatcher;
 import com.bulletphysics.collision.dispatch.CollisionObject;
 import com.bulletphysics.collision.dispatch.DefaultCollisionConfiguration;
+import com.bulletphysics.collision.narrowphase.ManifoldPoint;
 import com.bulletphysics.collision.narrowphase.PersistentManifold;
 import com.bulletphysics.collision.shapes.BoxShape;
 import com.bulletphysics.collision.shapes.BvhTriangleMeshShape;
@@ -27,8 +28,8 @@ import com.bulletphysics.dynamics.constraintsolver.SequentialImpulseConstraintSo
 import com.bulletphysics.linearmath.DefaultMotionState;
 import com.bulletphysics.linearmath.Transform;
 
-import obj.Entity;
-import obj.Player;
+import obj.entity.Entity;
+import obj.entity.player.Player;
 
 public class JBullet {
     CollisionConfiguration config;
@@ -165,5 +166,64 @@ public class JBullet {
             e.Rotation.set(rot);
         }
 
+        UpdatePlayerPhysics(player);
+    }
+    void UpdatePlayerPhysics(Player player)
+    {
+        // Get transform in phyiscs
+        Transform transform = new Transform();
+        player.body.getMotionState().getWorldTransform(transform);
+        Vector3f pos = transform.origin;
+
+        // Connect the player transform with the physics
+        player.position.set(pos.x, pos.y, pos.z);
+        player.camera.position.set(pos.x, pos.y, pos.z);
+
+        player.isGrounded = isGrounded(player);
+
+        // Set the velocity in the physics
+        Vector3f velocity = player.body.getLinearVelocity(new Vector3f());
+        velocity.x = player.inputX;
+        velocity.z = player.inputZ;
+        if(player.JumpStrenght > 0)
+            velocity.y = player.JumpStrenght;
+        player.body.setLinearVelocity(velocity);
+    }
+
+    public boolean isGrounded(Player player) {
+        final float CONTACT_EPS = 0.01f;   // tolerance for "touching"
+        final float MIN_UP_DOT = 0.7f;     // how much the contact normal must point upward
+        
+        int numManifolds = dynamicsWorld.getDispatcher().getNumManifolds();
+        for (int i = 0; i < numManifolds; i++) {
+            PersistentManifold manifold = dynamicsWorld.getDispatcher().getManifoldByIndexInternal(i);
+            CollisionObject obA = (CollisionObject) manifold.getBody0();
+            CollisionObject obB = (CollisionObject) manifold.getBody1();
+        
+            // is player involved in this manifold?
+            if (obA == player.body || obB == player.body) {
+                int numContacts = manifold.getNumContacts();
+                for (int j = 0; j < numContacts; j++) {
+                    ManifoldPoint pt = manifold.getContactPoint(j);
+                
+                    // contact distance (<= eps means contact or penetration)
+                    if (pt.getDistance() <= CONTACT_EPS) {
+                        // get normal pointing *towards* the player
+                        javax.vecmath.Vector3f normalForPlayer = new javax.vecmath.Vector3f(pt.normalWorldOnB);
+                        // normalWorldOnB is the normal on body B pointing from B -> A
+                        // if player is body1 (B), we need to invert it so it points to player
+                        if (obB == player.body) {
+                            normalForPlayer.negate();
+                        }
+                    
+                        // check if normal has an upward component (i.e. floor beneath player)
+                        if (normalForPlayer.y > MIN_UP_DOT) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
     }
 }

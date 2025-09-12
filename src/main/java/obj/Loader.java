@@ -3,7 +3,7 @@ package obj;
 import org.joml.Vector2f;
 import org.joml.Vector3f;
 
-import engine.Triangle;
+import engine.render.Triangle;
 
 import java.io.*;
 import java.util.*;
