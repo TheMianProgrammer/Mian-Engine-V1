@@ -33,7 +33,7 @@ public class Debug {
         Entity debugBox = new Entity(position, color, scale, renderer);
         debugBox.LoadMesh("assets/obj/basics/Cube.obj");
         //renderer.initCustomRender(debugBox.mesh, debugBox.vbo, debugBox.vao);
-        renderer.Entites.add(debugBox);
+        renderer.Entities.add(debugBox);
         renderer.initEntity(debugBox);
         //if(debugBox.vao == 0) debugBox.vao = GL15.glGenBuffers();
 //
@@ -45,7 +45,7 @@ public class Debug {
     public void RemoveDebugBox(int vao)
     {
         Entity target = null;
-        for(Entity entity : renderer.Entites)
+        for(Entity entity : renderer.Entities)
         {
             if(entity.vao == vao)
             {
@@ -62,7 +62,7 @@ public class Debug {
         GL30.glDeleteVertexArrays(target.vao);
         GL15.glDeleteBuffers(target.vbo);
 
-        renderer.Entites.remove(target);
+        renderer.Entities.remove(target);
         vao = 0;
     }
 
@@ -111,6 +111,7 @@ public class Debug {
             if(!hasPressedH) 
             {
                 Main.GetServer().UpdatePlayerChunks();
+                Main.GetRenderer().PackageEntityRenderers();
                 hasPressedH = true;
             }
         } else
@@ -122,7 +123,7 @@ public class Debug {
         Entity debugMesh = new Entity(position, color, scale, renderer);
         debugMesh.mesh = mesh;
 
-        renderer.Entites.add(debugMesh);
+        renderer.Entities.add(debugMesh);
         renderer.initEntity(debugMesh);
 
         return debugMesh.vao;

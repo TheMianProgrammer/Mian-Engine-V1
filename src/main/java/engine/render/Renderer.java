@@ -1,21 +1,17 @@
 package engine.render;
 
 import java.io.IOException;
-import java.nio.Buffer;
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
-import org.joml.AxisAngle4f;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
-import org.joml.Quaternionfc;
 import org.joml.Vector3f;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.glfw.GLFW;
@@ -26,13 +22,10 @@ import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL43;
 import org.lwjgl.opengl.GLDebugMessageCallback;
-import org.lwjgl.system.MemoryStack;
 
 import engine.Window;
-import engine.Input.keyboard.Keyboard;
 import engine.render.buffers.BufferBuilder;
 import engine.render.buffers.ColorBuffer;
-import engine.render.buffers.LightBuffer;
 import engine.render.buffers.NormalBuffer;
 import engine.render.buffers.UVBuffer;
 import engine.render.buffers.VertexBuffer;
@@ -42,7 +35,6 @@ import engine.render.shader.Shader;
 import engine.render.shader.ShaderWatchService;
 import engine.render.shadow.ShadowManager;
 import engine.render.texture.Texture;
-import jdk.jshell.spi.ExecutionControl;
 import obj.entity.Entity;
 import obj.entity.player.Camera;
 import text.Text;
@@ -56,11 +48,14 @@ public class Renderer {
     Sun sun;
     ShadowManager shadowManager = new ShadowManager();
 
+    Entity staticBatch;
+    List<Entity> dynamicBatches = new ArrayList<>();
+
     public Map<Entity, float[]> ExposureEntities = new HashMap<>();
 
     private final FloatBuffer matBuf = BufferUtils.createFloatBuffer(16);
 
-    public List<Entity> Entites = new ArrayList<>();
+    public List<Entity> Entities = new ArrayList<>();
     public List<Text> texts = new ArrayList<>();
     public List<Triangle> triangles = new ArrayList<>();
     int vao;
@@ -72,7 +67,7 @@ public class Renderer {
     int entityVbo;
 
     int currentRenderFrame = 0;
-    int shadowRenderUpdate = 100;
+    int shadowRenderUpdate = 60*10;
 
     Window EngineWindow;
     Camera camera;
@@ -94,7 +89,7 @@ public class Renderer {
     }
     public void addEntity(Entity entity)
     {
-        this.Entites.add(entity);
+        this.Entities.add(entity);
         shadowManager.addEntity(entity);
     }
     public void RecaculateMesh()
@@ -102,6 +97,47 @@ public class Renderer {
         Set<Triangle> uniqueTriangles = new LinkedHashSet<>(triangles);
         triangles = new ArrayList<>(uniqueTriangles);
     }
+    public Entity buildStaticMesh()
+    {
+        dynamicBatches.clear();
+
+        List<Triangle> combinedMesh = new ArrayList<>();
+        Texture tex = null;
+
+        for (Entity entity : Entities)
+        {
+            if (!entity.isEnabled) continue;
+            if (!entity.isStatic) {
+                dynamicBatches.add(entity);
+                continue;
+            }
+            if (tex == null) tex = entity.texture;
+
+            for (Triangle t : entity.mesh) {
+                combinedMesh.add(
+                    t.transformed(
+                        entity.Position,
+                        entity.Rotation,
+                        entity.Scale
+                    )
+                );
+            }
+            // combinedMesh.addAll(Arrays.asList(entity.mesh));
+        }
+
+        Entity batch = new Entity(
+            new Vector3f(0, 0, 0),
+            new Vector3f(0, 0, 0),
+            new Vector3f(1, 1, 1),
+            this
+        );
+
+        batch.mesh = combinedMesh.toArray(Triangle[]::new);
+        batch.texture = tex;
+
+        return batch;
+    }
+
     public void initEntity(Entity entity)
     {
         if(entity.vao == 0)
@@ -203,7 +239,7 @@ public class Renderer {
         vao = GL30.glGenVertexArrays();
         GL30.glBindVertexArray(vao); // ← vor jedem Buffer-Aufruf
         
-        for(Entity entity : Entites)
+        for(Entity entity : Entities)
         {
             if(entity.vao == 0) entity.initGLBuffers();
         }
@@ -217,10 +253,32 @@ public class Renderer {
         mat.get(fb);
         return fb;
     }
+
+    public void PackageEntityRenderers()
+    {
+        Entities.sort((a, b) -> {
+            if (a.texture == null && b.texture == null) return 0;
+            if (a.texture == null) return 1;
+            if (b.texture == null) return -1;
+            return Integer.compare(a.texture.getID(), b.texture.getID());
+        });
+        staticBatch = buildStaticMesh();
+        initEntity(staticBatch);
+        shadowManager.render();
+
+        System.out.println("Static tris: " + staticBatch.mesh.length);
+        System.out.println("NonStatic entities: " + dynamicBatches.size());
+
+        /*for (Entity e : Entities)
+        {
+            if (!e.isEnabled) continue;
+            batches.computeIfAbsent(e.texture, t -> new ArrayList<>()).add(e);
+        }*/
+    }
     public void render(Long window)
     {
         currentRenderFrame++;
-        if(currentRenderFrame%shadowRenderUpdate != 0)
+        if(currentRenderFrame%shadowRenderUpdate == 0)
             // Shadows
             shadowManager.render();
 
@@ -238,12 +296,26 @@ public class Renderer {
         shader.setUniformMat4("lightSpaceMatrix", Renderer.toFloatBuffer(sun.getLightSpaceMatrix()));
         shader.setUniform1i("shadowMap", 1);
 
-        for (Entity entity : Entites)
-        {
-            if(!entity.isEnabled) continue;
-            setModelMatrix(entity);
-            RenderUtils.drawEntity(entity);
+       Texture last = null;
+       for (Entity e : dynamicBatches)
+       {
+            if (!e.isEnabled) continue;
+
+            if (e.texture != last) {
+                bindTexture(e);
+                last = e.texture;
+            }
+
+            setModelMatrix(e);
+            RenderUtils.drawEntity(e);
         }
+
+        bindTexture(staticBatch);
+        shader.setUniformMat4(
+            "model",
+            new Matrix4f().identity().get(matBuf)
+        );
+        RenderUtils.drawEntity(staticBatch);
 
         GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         GL30.glBindVertexArray(0);
@@ -262,7 +334,6 @@ public class Renderer {
     }
     void setModelMatrix(Entity entity)
     {
-        bindTexture(entity);
 
         shader.setUniform1f("fSpecular", entity.Specular);
         

@@ -3,6 +3,8 @@ package engine.render;
 import java.util.Objects;
 import java.util.Random;
 
+import javax.vecmath.Quat4f;
+
 import org.joml.*;
 import org.joml.Math;
 
@@ -49,6 +51,41 @@ public class Triangle{
             normal.x, normal.y, normal.z
         };
     }   
+    public Triangle transformed(Vector3f position, Quat4f rotQuat4f, Vector3f scale) {
+        Quaternionf quat = new Quaternionf(
+            rotQuat4f.x,
+            rotQuat4f.y,
+            rotQuat4f.z,
+            rotQuat4f.w
+        );
+
+        Matrix4f m = new Matrix4f()
+            .identity()
+            .translate(position)
+            .rotate(quat)
+            .scale(scale);
+
+        Vector3f tv1 = m.transformPosition(new Vector3f(v1));
+        Vector3f tv2 = m.transformPosition(new Vector3f(v2));
+        Vector3f tv3 = m.transformPosition(new Vector3f(v3));
+
+        // transform normal (no translation)
+        Matrix3f normalMat = new Matrix3f(m).invert().transpose();
+        Vector3f n = normalMat.transform(new Vector3f(normal)).normalize();
+
+        Triangle t = new Triangle(
+            tv1, tv2, tv3,
+            new Vector2f(uv1),
+            new Vector2f(uv2),
+            new Vector2f(uv3),
+            new Vector3f(color)
+        );
+
+        t.normal = n;
+        return t;
+    }
+
+
 
     @Override
     public boolean equals(Object o){

@@ -1,7 +1,5 @@
 package engine;
 
-import java.sql.Time;
-
 import org.joml.Vector3f;
 
 import debug.Debug;
@@ -45,6 +43,8 @@ public class Main{
         debug = new Debug(renderer);
         inputManager = new InputManager(new InputManagerContext(window.getWindow()));
 
+        renderer.PackageEntityRenderers();
+
         debug.setInput(inputManager.getInput());
         player.setInput(inputManager.getInput());
 
@@ -82,14 +82,22 @@ public class Main{
         window.destroy();
     }
 
+    public static Renderer GetRenderer()
+    {
+        return renderer;
+    }
+
     public static void LogDebugCacTimes()
     {
-        System.out.println("Render Time: " + RenderTime);
-        System.out.println("Window Update Time: " + WindowUpdateTime);
-        System.out.println("Server Tick Time: " + ServerTickTime);
-        System.out.println("Player Update Time: " + PlayerUpdateTime);
-        System.out.println("Input Manager Time: " + InputManagerTime);
-        System.out.println("Last Window Update Time: " + WindowUpdateTime);
+        System.out.println("Render Time: " + 1000/RenderTime + "FPS (" + RenderTime + ")");
+        System.out.println("Window Update Time: " + 1000/WindowUpdateTime + "FPS (" + WindowUpdateTime +")");
+        System.out.println("Server Tick Time: " + 1000/ServerTickTime + "FPS (" + ServerTickTime + ")");
+        System.out.println("Player Update Time: " + 1000/ PlayerUpdateTime + "FPS (" + PlayerUpdateTime + ")");
+        System.out.println("Input Manager Time: " + 1000/InputManagerTime + "FPS (" + InputManagerTime + ")");
+        System.out.println("Last Window Update Time: " +1000/ WindowUpdateTime + "FPS (" + WindowUpdateTime + ")");
+
+        double totaltime = 1000/(RenderTime+WindowUpdateTime+ServerTickTime+PlayerUpdateTime+InputManagerTime+WindowUpdateTime);
+        System.out.println(totaltime + "FPS");
     }
 
     public void ActivateEntity(Entity entity, Texture texture){

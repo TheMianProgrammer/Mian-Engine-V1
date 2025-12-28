@@ -9,10 +9,12 @@ import org.joml.Vector2i;
 import org.joml.Vector3i;
 
 import obj.objects.block.Block;
+import obj.objects.data.ChunkData;
 
 public class Chunk {
     public Vector2i Position;
     World world;
+    public ChunkData data;
 
     public Map<Vector3i, Block> Blocks = new HashMap<>();
 

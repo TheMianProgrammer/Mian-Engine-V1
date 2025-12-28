@@ -43,7 +43,10 @@ public class BlockRenderer {
         right = loader.LoadEntity("assets/obj/basics/Plane.obj", new Vector3f(block.GetPosition()).add(new Vector3f(Direction.RIGHT.offset)), defaultScale, new Vector3f(0, 0, -90), block.GetTexture(), true);
         top = loader.LoadEntity("assets/obj/basics/Plane.obj",   new Vector3f(block.GetPosition()).add(new Vector3f(Direction.UP.offset)), defaultScale, new Vector3f(0, 0, 0), block.GetTexture(), true);
         bottom = loader.LoadEntity("assets/obj/basics/Plane.obj",new Vector3f(block.GetPosition()).add(new Vector3f(Direction.DOWN.offset)), defaultScale, new Vector3f(-180, 0, 0), block.GetTexture(), true);
-    
+    }
+
+    public void ActivateRendering(EntityLoader loader)
+    {
         GameServer server = GetBlock().GetWorld().GetServer();
         server.ActivateEntity(front); loader.initEntityCollider(front, true);
         server.ActivateEntity(back);  loader.initEntityCollider(back, true);

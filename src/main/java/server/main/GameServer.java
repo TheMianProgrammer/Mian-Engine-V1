@@ -28,6 +28,7 @@ public class GameServer {
     Entity Terrain;
     Entity TestCube;
     int seed = 51234;
+    final int startGenDistance = 4;
 
     World world; 
 
@@ -48,19 +49,28 @@ public class GameServer {
         entityLoader.initEntityCollider(TestCube, false);
         ActivateEntity(TestCube);
 
-        /*for(int y = 0; y < 20; y++){
-            Entity cube = entityLoader.LoadEntity("assets/obj/basics/Cube.obj", new Vector3f(0, (y)+y, 0), new Vector3f(1, 1, 1), GrassTexture, false);
-            entityLoader.initEntityCollider(cube, false);
-            ActivateEntity(cube);
-        }*/
+        PrepareWorldGeneration();
         UpdatePlayerChunks();
 
         physics.initPlayer(player);
     }
 
+    void PrepareWorldGeneration(){
+        for (int x = 0; x <= startGenDistance; x++)
+        {
+            for (int z = 0; z < startGenDistance; z++)
+            {
+                Vector2i ChunkPos = new Vector2i(x-16, z-16);
+
+                world.InitChunk(ChunkPos);
+            }
+        }
+    }
+
     public void UpdatePlayerChunks()
     {
         world.PrepareChunkGeneration();
+
         for(int x = 0; x <= player.RenderDistance*2; x++)
         {
             for(int z = 0; z <= player.RenderDistance*2; z++)
@@ -69,7 +79,8 @@ public class GameServer {
                     Math.round(player.position.x/16),
                     Math.round(player.position.z/16)
                 );
-                world.GenChunk(new Vector2i(x+PlayerOffset.x-player.RenderDistance, z+PlayerOffset.y-player.RenderDistance));
+                Vector2i ChunkPos = new Vector2i(x+PlayerOffset.x-player.RenderDistance, z+PlayerOffset.y-player.RenderDistance);
+                world.GenChunk(ChunkPos);
             }
         }
         world.loadedChunks.forEach((Vector2i pos, Chunk chunk) -> {
@@ -111,9 +122,19 @@ public class GameServer {
         physics.RemoveRigidbody(e);
     }
     
+    boolean isPlayerStartLocked = true;
     public void tick()
     {
         physics.UpdatePhysics(entities, player);
+        world.TickChunkGeneration();
+        
+        // for start
+        if(!world.isBussyLoadingChunks() && isPlayerStartLocked)
+        {
+            isPlayerStartLocked = false;
+            player.position = new Vector3f(0, 10, 0);
+            System.out.println("Done Generating Chunks!");
+        }
     }
 
     public WorldGen GetWorldGen()

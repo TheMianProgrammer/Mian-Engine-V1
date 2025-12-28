@@ -5,7 +5,6 @@ import java.nio.IntBuffer;
 
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL30;
 import org.lwjgl.stb.STBImage;
 
 public class Texture {
@@ -38,6 +37,10 @@ public class Texture {
         // GL30.glGenerateMipmap(GL11.GL_TEXTURE_2D);
 
         STBImage.stbi_image_free(image);
+    }
+    public int getID()
+    {
+        return id;
     }
 
     public void bind(){

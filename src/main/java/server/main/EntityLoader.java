@@ -8,7 +8,6 @@ import javax.vecmath.Quat4f;
 import  org.joml.Vector3f;
 
 import debug.Mathz;
-import engine.render.Renderer;
 import engine.render.texture.Texture;
 import obj.entity.Entity;
 

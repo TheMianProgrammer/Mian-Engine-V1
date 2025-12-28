@@ -22,11 +22,15 @@ public class Block {
     {
         return world;
     }
-
-    public void ActivateRendering(EntityLoader loader)
+    public void InitRendering(EntityLoader loader)
     {
         renderer = new BlockRenderer(this);
         renderer.InitzilizeBlock(loader, this);
+    }
+
+    public void ActivateRendering(EntityLoader loader)
+    {
+        renderer.ActivateRendering(loader);
     }
     public void DisableRendering(EntityLoader loader)
     {
