@@ -9,6 +9,7 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL30;
 
+import engine.Main;
 import engine.Input.keyboard.KeyCode;
 import engine.Input.keyboard.Keyboard;
 import engine.render.Renderer;
@@ -69,6 +70,8 @@ public class Debug {
         this.Input = input;
     }
 
+    boolean hasPressedH = false;
+
     public void CheckForKeyboard()
     {
         if(Input.getKeyDown(KeyCode.G))
@@ -99,6 +102,19 @@ public class Debug {
         {
             renderer.RecaculateMesh();
         }
+        if(Input.getKeyDown(KeyCode.Q))
+        {
+            Main.LogDebugCacTimes();
+        }
+        if (Input.getKeyDown(KeyCode.H))
+        {
+            if(!hasPressedH) 
+            {
+                Main.GetServer().UpdatePlayerChunks();
+                hasPressedH = true;
+            }
+        } else
+            hasPressedH = false;
     }
 
     public int AddDebugMesh(Triangle[] mesh, Vector3f position, Vector3f scale, Vector3f color)

@@ -9,6 +9,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import org.joml.AxisAngle4f;
 import org.joml.Matrix4f;
@@ -22,6 +24,8 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL30;
+import org.lwjgl.opengl.GL43;
+import org.lwjgl.opengl.GLDebugMessageCallback;
 import org.lwjgl.system.MemoryStack;
 
 import engine.Window;
@@ -35,8 +39,10 @@ import engine.render.buffers.VertexBuffer;
 import engine.render.lightning.Ray;
 import engine.render.lightning.Sun;
 import engine.render.shader.Shader;
+import engine.render.shader.ShaderWatchService;
 import engine.render.shadow.ShadowManager;
 import engine.render.texture.Texture;
+import jdk.jshell.spi.ExecutionControl;
 import obj.entity.Entity;
 import obj.entity.player.Camera;
 import text.Text;
@@ -46,10 +52,13 @@ public class Renderer {
     private final List<BufferBuilder> bufferBuilders = new ArrayList<>();
 
     Shader shader;
+    ShaderWatchService shaderWatchService;
     Sun sun;
     ShadowManager shadowManager = new ShadowManager();
 
     public Map<Entity, float[]> ExposureEntities = new HashMap<>();
+
+    private final FloatBuffer matBuf = BufferUtils.createFloatBuffer(16);
 
     public List<Entity> Entites = new ArrayList<>();
     public List<Text> texts = new ArrayList<>();
@@ -61,6 +70,9 @@ public class Renderer {
     int normalVbo;
     int fontVbo;
     int entityVbo;
+
+    int currentRenderFrame = 0;
+    int shadowRenderUpdate = 100;
 
     Window EngineWindow;
     Camera camera;
@@ -109,6 +121,9 @@ public class Renderer {
     }
     void CaculateLightBuffer(Entity entity)
     {
+        if (true) //needed for compiler :/
+            throw new RuntimeException("Performance o7");
+        
         List<Float> strength = new ArrayList<>();
         for(Triangle t : entity.mesh){
             float[] verticies = t.getVertices();
@@ -151,6 +166,7 @@ public class Renderer {
         try {
             shader = new Shader("assets/shader/basic/vertex.vert", "assets/shader/basic/fragment.frag");
             shadowManager.init();
+            shaderWatchService = new ShaderWatchService(shader);
         } catch (IOException e) {
             e.printStackTrace();
             System.exit(-1); // stop program if shader can't be loaded
@@ -166,6 +182,17 @@ public class Renderer {
         shadowManager.setSun(sun);
         shadowManager.setHeight.accept(EngineWindow.getHeight());
         shadowManager.setWidth.accept(EngineWindow.getWidth());
+
+        GL13.glActiveTexture(GL13.GL_TEXTURE1);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, sun.shadowMap);
+
+        GL.createCapabilities();
+        GL11.glEnable(GL43.GL_DEBUG_OUTPUT);
+        GL11.glEnable(GL43.GL_DEBUG_OUTPUT_SYNCHRONOUS);
+        GL43.glDebugMessageCallback((source, type, id, severity, length, message, userParam) -> {
+            String msg = GLDebugMessageCallback.getMessage(length, message);
+            System.err.println("GL DEBUG: " + msg);
+        }, 0);
 
         GL11.glEnable(GL11.GL_DEPTH_TEST);
         GL11.glDepthFunc(GL11.GL_LESS);
@@ -192,21 +219,30 @@ public class Renderer {
     }
     public void render(Long window)
     {
-        // Shadows
-        shadowManager.render();
+        currentRenderFrame++;
+        if(currentRenderFrame%shadowRenderUpdate != 0)
+            // Shadows
+            shadowManager.render();
 
         // Main Shader
         shader.use();
-        
-        GL13.glActiveTexture(GL13.GL_TEXTURE1);
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, sun.shadowMap);
 
-        for(Entity entity : Entites)
+        shader.setUniform1f("time", (float)GLFW.glfwGetTime());
+        shader.setUniform1i("texture1", 0);
+        shader.setUniform1f("sunPower", sun.strength);
+        shader.setUniform1f("exposure", 1);
+        shader.setUniform2f("res", EngineWindow.getWidth(), EngineWindow.getHeight());
+        shader.setUniform2f("shadowMapSize", 1024, 1024);
+        shader.setUniform3f("sunPos", sun.Position);
+        shader.setUniform3f("viewSource", camera.position);
+        shader.setUniformMat4("lightSpaceMatrix", Renderer.toFloatBuffer(sun.getLightSpaceMatrix()));
+        shader.setUniform1i("shadowMap", 1);
+
+        for (Entity entity : Entites)
         {
-            bindTexture(entity);
-            InitShaderVariables(entity);
+            if(!entity.isEnabled) continue;
+            setModelMatrix(entity);
             RenderUtils.drawEntity(entity);
-            // CaculateLightBuffer(entity);
         }
 
         GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
@@ -224,20 +260,13 @@ public class Renderer {
         GL11.glClearColor(0.2f, 0.3f, 0.3f, 0.0f);
         GL11.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
     }
-    void InitShaderVariables(Entity entity)
+    void setModelMatrix(Entity entity)
     {
-        shader.setUniform1f("time", (float)GLFW.glfwGetTime());
-        shader.setUniform1i("texture1", 0);
-        shader.setUniform1f("sunPower", sun.strength);
-        shader.setUniform1f("exposure", 1);
-        shader.setUniform1f("fSpecular", entity.Specular);
-        shader.setUniform2f("res", EngineWindow.getWidth(), EngineWindow.getHeight());
-        shader.setUniform2f("shadowMapSize", 1024, 1024);
-        shader.setUniform3f("sunPos", sun.Position);
-        shader.setUniform3f("viewSource", camera.position);
-        shader.setUniformMat4("lightSpaceMatrix", Renderer.toFloatBuffer(sun.getLightSpaceMatrix()));
-        shader.setUniform1i("shadowMap", 1);
+        bindTexture(entity);
 
+        shader.setUniform1f("fSpecular", entity.Specular);
+        
+        
         Matrix4f model = new Matrix4f();
 
         Quaternionf jq = new Quaternionf(
@@ -260,13 +289,9 @@ public class Renderer {
         float aspect = (float)EngineWindow.getWidth() / (float)EngineWindow.getHeight();
         Matrix4f projection = camera.getProjectionMatrix((float)Math.toRadians(77), aspect, 0.1f, 2000f);
 
-        try(MemoryStack stack = MemoryStack.stackPush()) {
-            FloatBuffer fb = stack.mallocFloat(16);
-
-            shader.setUniformMat4("model", model.get(fb));
-            shader.setUniformMat4("view", view.get(fb));
-            shader.setUniformMat4("projection", projection.get(fb));
-        }
+        shader.setUniformMat4("model", model.get(matBuf));
+        shader.setUniformMat4("view", view.get(matBuf));
+        shader.setUniformMat4("projection", projection.get(matBuf));
     }
 
     public void UpdateModel(Entity entity)

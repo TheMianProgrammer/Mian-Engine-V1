@@ -27,6 +27,8 @@ public class Player {
     static final float SPEED = 10F;
     static final float SENSIVITY=100F;
 
+    public int RenderDistance = 2;//2 Chunks
+
     public boolean isGrounded;
 
     public Keyboard Input;
@@ -48,7 +50,7 @@ public class Player {
         // camera.translate(new Vector3f(0, -2, 0));
         if(JumpStrenght >= 0)
             JumpStrenght -= 0.1F;
-        else
+        
             JumpStrenght = 0;
 
         this.velocity.mul(0.1F);
@@ -67,7 +69,7 @@ public class Player {
         camera.translateRight(position.y);
         camera.translate(new Vector3f(0, position.y, 0));
 
-        // rotate input into world space
+        // rotate input into world 
         double rad = Math.toRadians(camera.yaw);
         inputX = (float) (Math.cos(rad) * position.x - Math.sin(rad) * position.y);
         inputZ = (float) (Math.sin(rad) * position.x + Math.cos(rad) * position.y);

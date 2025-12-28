@@ -12,7 +12,7 @@ dependencies {
     implementation "org.lwjgl:lwjgl-glfw:3.3.6"
     implementation "org.lwjgl:lwjgl-opengl:3.3.6"
     implementation "org.lwjgl:lwjgl-stb:3.3.6"   // <-- STB Truetype
-    
+    implementation "de.articdive:jnoise-pipeline:4.1.0"
 
     runtimeOnly "org.lwjgl:lwjgl:3.3.6:natives-windows"
     runtimeOnly "org.lwjgl:lwjgl-glfw:3.3.6:natives-windows"
@@ -26,4 +26,11 @@ dependencies {
 
 application {
     mainClass = "engine.Main"
+}
+
+tasks.register("runWorldPreviewTool", JavaExec) {
+    group = "application"
+    description = "Runs the WorldGenPreviewTool"
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass.set("server.main.worldgen.WorldGenPreviewTool")
 }

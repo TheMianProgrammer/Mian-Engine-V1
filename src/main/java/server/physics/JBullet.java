@@ -126,6 +126,12 @@ public class JBullet {
         }
     }
 
+    public void RemoveRigidbody(Entity entity)
+    {
+        if (entity.body == null) return;
+        dynamicsWorld.removeCollisionObject(entity.body);
+    }
+
     public void AddRigidbody(Entity entity)
     {
         CollisionShape boxSpahShape = new BoxShape(new Vector3f(

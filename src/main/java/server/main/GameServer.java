@@ -1,20 +1,20 @@
 package server.main;
 
-import java.io.Serial;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.joml.Vector2i;
 import org.joml.Vector3f;
-import org.joml.Vector2f;
 
+import engine.Main;
+import engine.render.WorldRenderer;
+import engine.render.texture.Texture;
 import obj.entity.Entity;
 import obj.entity.player.Player;
-import obj.objects.block.Block;
-import server.client.Client;
+import obj.objects.Chunk;
+import obj.objects.World;
+import server.main.worldgen.WorldGen;
 import server.physics.JBullet;
-import engine.Main;
-import engine.render.Renderer;
-import engine.render.texture.Texture;
 
 public class GameServer {
     List<Entity> entities = new ArrayList<>();
@@ -22,9 +22,14 @@ public class GameServer {
     public Player player;
     public EntityLoader entityLoader;
     public Texture GrassTexture;
+    WorldRenderer renderer;
+    WorldGen worldGen;
 
     Entity Terrain;
     Entity TestCube;
+    int seed = 51234;
+
+    World world; 
 
     JBullet physics = new JBullet();
 
@@ -32,43 +37,55 @@ public class GameServer {
     {
         physics.InitJBullet();
         entityLoader = new EntityLoader(this);
+        world = new World(this);
+        renderer = new WorldRenderer();
+        renderer.AddWorld(world);
+        worldGen = new WorldGen(seed);
 
         LoadImages();
-        //Terrain = entityLoader.LoadEntity("assets/obj/terrain/VoxelMap2.obj", new Vector3f(0, -30, 0), new Vector3f(10, 10, 10), GrassTexture, true);
-        //entityLoader.initEntityCollider(Terrain, true);
-        //Terrain.TillTexture(new Vector2f(100, 100));
-        //ActivateEntity(Terrain);
         
         TestCube = entityLoader.LoadEntity("assets/obj/basics/Cube.obj", new Vector3f(0, 5, 0), new Vector3f(1, 1, 1), GrassTexture, false);
         entityLoader.initEntityCollider(TestCube, false);
         ActivateEntity(TestCube);
 
-        for(int y = 0; y < 20; y++){
+        /*for(int y = 0; y < 20; y++){
             Entity cube = entityLoader.LoadEntity("assets/obj/basics/Cube.obj", new Vector3f(0, (y)+y, 0), new Vector3f(1, 1, 1), GrassTexture, false);
             entityLoader.initEntityCollider(cube, false);
             ActivateEntity(cube);
-        }
-        for(int x = 0; x < 20; x++)
-        {
-            for(int z = 0; z < 20; z++)
-            {
-                Block newBlock = new Block(new Vector3f(x, 0, z), 0);
-                newBlock.LoadEntity(entityLoader);
-                ActivateEntity(newBlock.getEntity());
-                // Entity box = entityLoader.LoadEntity("assets/obj/basics/Cube.obj", new Vector3f(x*2, 0, z*2), new Vector3f(1, 1, 1), GrassTexture, true);
-                // entityLoader.initEntityCollider(box, false);
-                // ActivateEntity(box);
-                // for(Entity side : newBlock.sides)
-                // {
-                //     ActivateEntity(side);
-                // }
-            }
-        }
+        }*/
+        UpdatePlayerChunks();
 
         physics.initPlayer(player);
     }
 
-    void ActivateEntity(Entity e){
+    public void UpdatePlayerChunks()
+    {
+        world.PrepareChunkGeneration();
+        for(int x = 0; x <= player.RenderDistance*2; x++)
+        {
+            for(int z = 0; z <= player.RenderDistance*2; z++)
+            {
+                Vector2i PlayerOffset = new Vector2i(
+                    Math.round(player.position.x/16),
+                    Math.round(player.position.z/16)
+                );
+                world.GenChunk(new Vector2i(x+PlayerOffset.x-player.RenderDistance, z+PlayerOffset.y-player.RenderDistance));
+            }
+        }
+        world.loadedChunks.forEach((Vector2i pos, Chunk chunk) -> {
+            world.UpdateChunk(chunk);
+        });
+        world.CleanupChunks();
+    }
+
+    public void UpdatePlayerColliders()
+    {
+        world.loadedChunks.forEach((Vector2i Pos, Chunk chunk) -> {
+            chunk.CheckColliders(new javax.vecmath.Vector3f(player.position.x, player.position.y, player.position.z));
+        });
+    }
+
+    public void ActivateEntity(Entity e){
         for(Main c : Clients){
             c.ActivateEntity(e, GrassTexture);
         }
@@ -89,9 +106,22 @@ public class GameServer {
         entities.add(e);
         physics.AddRigidbodyMesh(e, e.isStatic);
     }
+    public void removeEntityColl(Entity e)
+    {
+        physics.RemoveRigidbody(e);
+    }
     
     public void tick()
     {
         physics.UpdatePhysics(entities, player);
+    }
+
+    public WorldGen GetWorldGen()
+    {
+        return worldGen;
+    }
+    public WorldRenderer GetWorldRenderer()
+    {
+        return renderer;
     }
 }

@@ -16,7 +16,7 @@ out vec4 FragPosLightSpace;
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
-uniform mat4 lightSpaceMatrix;   // FIX: war fälschlich vec4
+uniform mat4 lightSpaceMatrix;
 
 void main()
 {
@@ -31,6 +31,6 @@ void main()
     vExposure = aExposure;
 
     FragPosLightSpace = lightSpaceMatrix * worldPos;
-
+    
     gl_Position = projection * view * worldPos;
 }

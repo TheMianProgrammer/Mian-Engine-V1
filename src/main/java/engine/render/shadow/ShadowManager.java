@@ -24,7 +24,6 @@ public class ShadowManager {
     List<Entity> Entities = new ArrayList<>();
     public void init()
     {
-        System.out.println (1);
         try{
             depthShader = new Shader("assets/shader/basic/depth/depth.vert", "assets/shader/basic/depth/depth.frag");  
         } catch(Exception e)
@@ -75,7 +74,6 @@ public class ShadowManager {
     }
     public void addEntity(Entity entity)
     {
-        System.out.println (2);
         this.Entities.add(entity);
     }
 }

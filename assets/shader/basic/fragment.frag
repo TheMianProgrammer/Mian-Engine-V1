@@ -54,19 +54,19 @@ void main() {
 
     vec3 albedo = vec3(texture(texture1, fTexCoord));
 
-    vec3 ambient = 0.1 * albedo;
+    vec3 ambient = 0.3 * albedo;
 
-    float diff = max(dot(normal, lightDir), 0.0);
+    float diff = max(dot(normal, lightDir), 0.2);
     vec3 diffuse = diff * albedo * sunPower;
 
     vec3 viewDir = normalize(viewSource - fragPos);
     vec3 reflectDir = reflect(-lightDir, normal);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), fSpecular);
-    vec3 specular = spec * vec3(1.0);
+    vec3 specular = spec * vec3(0.9647, 0.9961, 2.0);
 
     vec3 hdrColor = ambient + diffuse + specular;
-    vec3 mapped = vec3(1.0) - exp(-hdrColor * exposure);
-    mapped = pow(mapped, vec3(1.0/2.2));
+    vec3 mapped = vec3(0.9686, 0.9882, 1.0) - exp(-hdrColor * exposure);
+    mapped = pow(mapped, vec3(1.3/2.2));
 
     vec3 shadowMapped = mapped * (1.0 - shadow);
 

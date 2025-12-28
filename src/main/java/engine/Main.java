@@ -1,5 +1,7 @@
 package engine;
 
+import java.sql.Time;
+
 import org.joml.Vector3f;
 
 import debug.Debug;
@@ -28,6 +30,8 @@ public class Main{
     static float deltaTime;
     static long lastTime = System.nanoTime();
 
+    static double RenderTime, WindowUpdateTime, ServerTickTime, PlayerUpdateTime,InputManagerTime;
+
     public static void main(String[] args) {
         window = new Window();
         window.init();
@@ -44,20 +48,48 @@ public class Main{
         debug.setInput(inputManager.getInput());
         player.setInput(inputManager.getInput());
 
+        double lastRenderTime, lastWindowUpdateTime, lastServerTickTime, lastPlayerUpdateTime, lastInputManagerTime;
+
         while (!window.shouldClose()) {
+            lastRenderTime = System.currentTimeMillis();
             renderer.clear();
             renderer.render(window.getWindow());
-            window.update();
-            server.tick();
-            player.update();
-            inputManager.update();
+            RenderTime = System.currentTimeMillis() - lastRenderTime;
 
+            lastWindowUpdateTime = System.currentTimeMillis();
+            window.update();
+            WindowUpdateTime = System.currentTimeMillis() - lastWindowUpdateTime;
+
+            lastServerTickTime = System.currentTimeMillis();
+            server.tick();
+            ServerTickTime = System.currentTimeMillis() - lastServerTickTime;
+            
+            lastPlayerUpdateTime = System.currentTimeMillis();
+            player.update();
+            PlayerUpdateTime = System.currentTimeMillis() - lastPlayerUpdateTime;
+
+            lastInputManagerTime = System.currentTimeMillis();
+            inputManager.update();
+            InputManagerTime = System.currentTimeMillis() - lastInputManagerTime;
+
+            lastWindowUpdateTime = System.currentTimeMillis();
             UpdateDeltaTime();
             debug.CheckForKeyboard();
             player.camera.deltaTime = deltaTime;
+            WindowUpdateTime = System.currentTimeMillis() - lastWindowUpdateTime;
         }
 
         window.destroy();
+    }
+
+    public static void LogDebugCacTimes()
+    {
+        System.out.println("Render Time: " + RenderTime);
+        System.out.println("Window Update Time: " + WindowUpdateTime);
+        System.out.println("Server Tick Time: " + ServerTickTime);
+        System.out.println("Player Update Time: " + PlayerUpdateTime);
+        System.out.println("Input Manager Time: " + InputManagerTime);
+        System.out.println("Last Window Update Time: " + WindowUpdateTime);
     }
 
     public void ActivateEntity(Entity entity, Texture texture){
@@ -72,5 +104,9 @@ public class Main{
     }
     static void LoadImages() {
         GrassTexture = new Texture("assets/texture/grass/VoxelGrass.png");
+    }
+    public static GameServer GetServer()
+    {
+        return server;
     }
 }

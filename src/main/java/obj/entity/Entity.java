@@ -25,6 +25,7 @@ import engine.render.Triangle;
 import engine.render.shader.Shader;
 import engine.render.texture.Texture;
 import obj.Loader;
+import obj.objects.World;
 
 public class Entity{
 
@@ -36,6 +37,7 @@ public class Entity{
     public Vector3f Scale;
     public Vector3f Color;
     public float Specular = 16;
+    public boolean isMeshed = false;
 
     String MeshPath;
     public Renderer rendererComponent;
@@ -50,12 +52,19 @@ public class Entity{
 
     public Texture texture;
 
+    public boolean isEnabled = true;
+    public boolean isColliderEnabled = false;
+
     public Triangle[] mesh;
     public float[] vertecies;
     private float[] baseUVs;
 
     public boolean isStatic = false;
 
+    public void setMeshed(boolean isMeshed)
+    {
+        this.isMeshed = isMeshed;
+    }
     public Entity(Vector3f position, Vector3f Color, Vector3f Scale, Renderer Renderer)
     {
         this.Position = position;
@@ -81,6 +90,20 @@ public class Entity{
         model.scale(Scale);
 
         return model;
+    }
+
+    public void EnableCollider(World world)
+    {
+        if (isColliderEnabled) return;
+        isColliderEnabled = true;
+        world.GetServer().entityLoader.initEntityCollider(this, isMeshed);
+        
+    }
+    public void DisableCollider(World world)
+    {
+        if (!isColliderEnabled) return;
+        isColliderEnabled = false;
+        world.GetServer().entityLoader.removeEntityCollider(this);
     }
 
     public void update()
@@ -291,6 +314,13 @@ public class Entity{
         }
         rendererComponent.addEntity(this);
         rendererComponent.initEntity(this);
+    }
+    public void Enable(){
+        isEnabled = true;
+    }
+    public void Disable()
+    {
+        isEnabled = false;
     }
     public Vector3f[] getMeshVertecies() {
         Vector3f[] Verticies = new Vector3f[mesh.length * 3];
