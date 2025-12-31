@@ -48,12 +48,15 @@ public class WorldGen {
 
     public Texture GetTexture(int x, int y, int z)
     {
+        BiomeRegestry biome = getBiome(x, z);
         int top = GetOverworldY(x, z);
-        Texture tex = null;
+        Texture tex;
         if (top == y)
-        {
-            tex = new Texture(TextureRegestry.GRASS.path());
-        }
+            tex = biome.getTopLayer().texture();
+        else if (y > top-4)
+            tex = biome.getDirt().texture();
+        else 
+            tex = biome.getStone().texture();
         return tex;
     }
     

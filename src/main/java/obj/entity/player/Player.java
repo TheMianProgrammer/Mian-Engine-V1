@@ -64,7 +64,12 @@ public class Player {
     }
     public void translate(Vector2f position)
     {
-        this.position.add(new Vector3f(position.x, 0, position.y));
+        // this.position.add(new Vector3f(position.x, 0, position.y));
+        javax.vecmath.Vector3f velocity = body.getLinearVelocity(new javax.vecmath.Vector3f());
+        velocity.x = position.x;
+        velocity.z = position.y;
+        body.setLinearVelocity(new javax.vecmath.Vector3f(velocity.x, velocity.y, velocity.z));
+
         camera.translateForward(position.x);
         camera.translateRight(position.y);
         camera.translate(new Vector3f(0, position.y, 0));

@@ -19,7 +19,7 @@ public class Texture {
 
         STBImage.stbi_set_flip_vertically_on_load(true);
         ByteBuffer image = STBImage.stbi_load(path, w, h, channels, 4);
-        if (image == null) throw new RuntimeException("Failed to laod image: " + STBImage.stbi_failure_reason());
+        if (image == null) throw new RuntimeException("Failed to laod image (" + path + "): " + STBImage.stbi_failure_reason());
 
         width = w.get();
         height = h.get();

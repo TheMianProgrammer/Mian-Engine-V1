@@ -9,6 +9,7 @@ import org.joml.Vector3f;
 import engine.Main;
 import engine.render.WorldRenderer;
 import engine.render.texture.Texture;
+import engine.render.texture.TextureRegestry;
 import obj.entity.Entity;
 import obj.entity.player.Player;
 import obj.objects.Chunk;
@@ -21,7 +22,6 @@ public class GameServer {
     public List<Main> Clients = new ArrayList<>();
     public Player player;
     public EntityLoader entityLoader;
-    public Texture GrassTexture;
     WorldRenderer renderer;
     WorldGen worldGen;
 
@@ -46,7 +46,7 @@ public class GameServer {
 
         LoadImages();
         
-        TestCube = entityLoader.LoadEntity("assets/obj/basics/Cube.obj", new Vector3f(0, 5, 0), new Vector3f(1, 1, 1), GrassTexture, false);
+        TestCube = entityLoader.LoadEntity("assets/obj/basics/Cube.obj", new Vector3f(0, 5, 0), new Vector3f(1, 1, 1), TextureRegestry.GRASS.texture(), false);
         entityLoader.initEntityCollider(TestCube, false);
         ActivateEntity(TestCube);
 
@@ -102,13 +102,14 @@ public class GameServer {
 
     public void ActivateEntity(Entity e){
         for(Main c : Clients){
-            c.ActivateEntity(e, GrassTexture);
+            c.ActivateEntity(e, TextureRegestry.GRASS.texture());
         }
     }
 
     void LoadImages()
     {
-        GrassTexture = new Texture("assets/texture/grass/VoxelGrass.png");
+        // GrassTexture = new Texture("assets/texture/grass/VoxelGrass.png");
+        TextureRegestry.init();
     }
 
     public void initEntity(Entity e)
@@ -136,6 +137,9 @@ public class GameServer {
     {
         physics.UpdatePhysics(entities, player);
         world.TickChunkGeneration();
+
+        if (isPlayerStartLocked)
+            player.position = new Vector3f(0, 100, 0);
         
         // for start
         if(!world.isBussyLoadingChunks() && isPlayerStartLocked)
