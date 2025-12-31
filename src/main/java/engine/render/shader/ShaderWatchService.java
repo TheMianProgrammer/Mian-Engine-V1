@@ -9,6 +9,8 @@ import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
 
+import engine.Main;
+
 public class ShaderWatchService {
     Shader shader;
 
@@ -28,9 +30,9 @@ public class ShaderWatchService {
         WatchService watchService = FileSystems.getDefault().newWatchService();
         shaderDir.register(watchService, StandardWatchEventKinds.ENTRY_MODIFY);
 
-        new Thread(()->{
+        Thread shaderWatcher = new Thread(()->{
             System.out.println("Shader watcher is now Watching...");
-            while (true) {
+            while (!Main.GetWindow().shouldClose()) {
                 try{
                     WatchKey key = watchService.take();
                     for (WatchEvent<?> event : key.pollEvents()) {
@@ -47,10 +49,13 @@ public class ShaderWatchService {
                 } catch(InterruptedException e)
                 {
                     Thread.currentThread().interrupt();
-                    System.out.println("Shader Watch service crashed: \n" + e);
+                    System.out.println("Shader Watch service crashed:\n" + e);
                     break;
                 }
+                Thread.currentThread().interrupt();
+                System.out.println("Shader Watch service stopped");
             }
-        }).start();
+        });
+        shaderWatcher.start();
     }
 }

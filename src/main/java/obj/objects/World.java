@@ -3,8 +3,13 @@ package obj.objects;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.Vector;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.stream.IntStream;
@@ -33,7 +38,12 @@ public class World {
     private final List<Chunk> lazyReadyLoadChunks = new ArrayList<>();
     private final List<Vector2i> lazyToLoadChunks = new ArrayList<>();
 
+    private ExecutorService lazyInitChunkPool;
+
+    public List<Consumer<Boolean>> onLazyInitChunks = new ArrayList<>();
+
     private final AtomicInteger loadingChunksCount = new AtomicInteger(0);
+    private final Set<Vector2i> initzilisingChunks = new HashSet<>();
 
     public boolean isBussyLoadingChunks()
     {
@@ -45,6 +55,7 @@ public class World {
     public World(GameServer server)
     {
         this.server = server;
+        lazyInitChunkPool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
     }
 
     public GameServer GetServer()
@@ -66,6 +77,10 @@ public class World {
     }
     public void PlaceBlockSilent(Vector3i Pos, Block block)
     {
+        if(blockList.containsKey(Pos)) {
+            System.out.println("Warning: Skipped duplicate");
+            return;
+        }
         blockList.put(Pos, block);
     }
 
@@ -100,61 +115,86 @@ public class World {
             GetServer().GetWorldRenderer().UpdateBlock(pos);
         });
     }
-    public void InitChunk(Vector2i ChunkPos)
+    public void Shutdown()
     {
-        loadingChunksCount.incrementAndGet();
-        new Thread(() -> {
-            try {
-                ChunkData data = generateChunkData(ChunkPos);
-                Chunk chunk = new Chunk(this);
-                chunk.data = data;
-                chunk.Position = ChunkPos;
-        
-                /*List<Block> blocks = Arrays.stream(data.positions)
-                    .parallel()
-                    .map(p -> new Block(new Vector3f(p), 1, this))
-                    .toList(); */
-                List<Block> blocks = Arrays.stream(data.positions)
-                    .map(p -> new Block(new Vector3f(p), 1, this))
-                    .toList();
-        
-                for (int i = 0; i < data.positions.length; i++) {
-                    Block block = blocks.get(i);
-                    chunk.AddBlock(data.positions[i], block);
-                }
+        lazyInitChunkPool.shutdown();
+    }
+    void CreateChunkData(Vector2i ChunkPos)
+    {
+        ChunkData data = generateChunkData(ChunkPos);
+        Chunk chunk = new Chunk(this);
+        chunk.data = data;
+        chunk.Position = ChunkPos;
     
-                synchronized (lazyReadyInitChunks) {
-                    lazyReadyInitChunks.add(chunk);
-                }
-                synchronized (lazyToLoadChunks) {
-                    if(lazyToLoadChunks.contains(ChunkPos))
-                    {
-                        if (lazyToLoadChunks.remove(ChunkPos)){
-                            synchronized (lazyReadyLoadChunks) {
-                                lazyReadyLoadChunks.add(chunk);
-                            }
-                        }
+        /*List<Block> blocks = Arrays.stream(data.positions)
+            .parallel()
+            .map(p -> new Block(new Vector3f(p), 1, this))
+            .toList(); */
+        List<Block> blocks = Arrays.stream(data.positions)
+            .map(p -> new Block(p, 1, this))
+            .toList();
+    
+        for (int i = 0; i < data.positions.length; i++) {
+            Block block = blocks.get(i);
+            chunk.AddBlock(data.positions[i], block);
+        }
+    
+        synchronized (initzilisingChunks) {
+            if (generatedChunks.containsKey(chunk.Position)){
+                initzilisingChunks.remove(chunk.Position);
+                loadingChunksCount.decrementAndGet();
+                return;
+            }
+            synchronized (lazyReadyInitChunks) {
+                lazyReadyInitChunks.add(chunk);
+            }
+        }
+        synchronized (lazyToLoadChunks) {
+            if(lazyToLoadChunks.contains(ChunkPos))
+            {
+                if (lazyToLoadChunks.remove(ChunkPos)){
+                    synchronized (lazyReadyLoadChunks) {
+                        lazyReadyLoadChunks.add(chunk);
                     }
                 }
-            } finally {
-                loadingChunksCount.decrementAndGet();
             }
-        }).start();
+        }
+    }
+    public void InitChunk(Vector2i ChunkPos)
+    {
+        synchronized (initzilisingChunks) {
+            if (generatedChunks.containsKey(ChunkPos) || initzilisingChunks.contains(ChunkPos))
+            {
+                return;
+            }
+            initzilisingChunks.add(ChunkPos);
+        }
+        loadingChunksCount.incrementAndGet();
+        //Thread initThread = new Thread(() -> {
+        //     CreateChunkData(ChunkPos);
+        //});
+        //initThread.setDaemon(true);
+        lazyInitChunkPool.submit(() -> CreateChunkData(ChunkPos));
+        // initThread.start();
     }
     public void TickChunkGeneration()
     {
         synchronized (lazyReadyInitChunks) {
             for (Chunk chunk : lazyReadyInitChunks)
             {
-                int i = 0;
-                for (Block block : chunk.Blocks.values())
+                if (generatedChunks.containsKey(chunk.Position)) continue;
+                for (int i = 0; i < chunk.data.positions.length; i++)
                 {
-                    PlaceBlockSilent(chunk.data.positions[i], block);
+                    Vector3i pos = chunk.data.positions[i];
+                    Block block = chunk.Blocks.get(pos);
+                    if (block == null) continue;
+                    PlaceBlockSilent(pos, block);
                     block.InitRendering(GetServer().entityLoader);
-                    i++;
                 }
+                loadingChunksCount.decrementAndGet();
                 generatedChunks.put(chunk.Position, chunk);
             }
+            onLazyInitChunks.forEach(c -> c.accept(true));
             lazyReadyInitChunks.clear();
         }
         synchronized (lazyReadyLoadChunks) {
@@ -177,7 +217,8 @@ public class World {
             int wz = z + chunkPos.y * 16;
             int y = server.GetWorldGen().GetOverworldY(wx, wz);
 
-            data.positions[i] = new Vector3i(wx*2, y*2, wz*2);
+            data.positions[i] = new Vector3i(wx, y, wz);
+            data.textures[i] = server.GetWorldGen().GetTexture(wx, y, wz);
         });
 
         return data;

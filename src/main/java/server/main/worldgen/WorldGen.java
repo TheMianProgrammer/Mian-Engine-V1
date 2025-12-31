@@ -1,6 +1,9 @@
 package server.main.worldgen;
 
 import de.articdive.jnoise.generators.noisegen.perlin.PerlinNoiseGenerator;
+import engine.render.texture.Texture;
+import engine.render.texture.TextureRegestry;
+import obj.objects.data.BiomeRegestry;
 
 public class WorldGen {
     /// OVEERWORLD
@@ -9,6 +12,7 @@ public class WorldGen {
     PerlinNoiseGenerator overworldNoise_detailAmplitude;
     PerlinNoiseGenerator overworldNoise_mountains;
     PerlinNoiseGenerator overworldNoise_mountainsAmplitude;
+    PerlinNoiseGenerator biomeNoise;
 
     public WorldGen(int seed)
     {
@@ -27,6 +31,30 @@ public class WorldGen {
         overworldNoise_mountainsAmplitude = PerlinNoiseGenerator.newBuilder()
             .setSeed((long)seed+4)
             .build();
+        biomeNoise = PerlinNoiseGenerator.newBuilder()
+            .setSeed((long)seed+5)
+            .build();
+    }
+
+    public BiomeRegestry getBiome(int x, int z) {
+        double n = biomeNoise.evaluateNoise(x * 0.0008, 0, z * 0.0008);
+
+        if (n < -0.3) return BiomeRegestry.PLAINS;
+        if (n < 0.2) return BiomeRegestry.SWAMP;
+        if (n < 0.6) return BiomeRegestry.PLAINS;
+
+        return BiomeRegestry.PLAINS;
+    }
+
+    public Texture GetTexture(int x, int y, int z)
+    {
+        int top = GetOverworldY(x, z);
+        Texture tex = null;
+        if (top == y)
+        {
+            tex = new Texture(TextureRegestry.GRASS.path());
+        }
+        return tex;
     }
     
     public boolean isInCave(int x, int y, int z)
@@ -36,6 +64,8 @@ public class WorldGen {
 
     public int GetOverworldY(int x, int z)
     {
+        BiomeRegestry biome = getBiome(x, z);
+
         double base = overworldNoise_base.evaluateNoise(x*0.009, 0, z*0.009) * 60f;
         double detail = overworldNoise_detail.evaluateNoise(x*0.006, 0, z*0.006)*10f;
         double detailAmp = overworldNoise_detailAmplitude.evaluateNoise(x*0.0005, 0, z*0.0005)*100f;
@@ -49,6 +79,10 @@ public class WorldGen {
         montain *= Math.max(-10, montainAmp);
 
         base = Math.max(0, base);
+
+        montain *= biome.getMontainsAmp();
+        detail *= biome.getDetailAmp();
+        base *= biome.getPlainsAmp();
 
         //int height = (int)((base+detail)*(montain*0.5f));
         int height = (int)((base+detail)*2f+montain*0.5f);

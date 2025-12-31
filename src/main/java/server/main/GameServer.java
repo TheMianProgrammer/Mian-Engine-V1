@@ -42,6 +42,7 @@ public class GameServer {
         renderer = new WorldRenderer();
         renderer.AddWorld(world);
         worldGen = new WorldGen(seed);
+        world.onLazyInitChunks.add((b)->onChunksGenerated(b));
 
         LoadImages();
         
@@ -50,7 +51,6 @@ public class GameServer {
         ActivateEntity(TestCube);
 
         PrepareWorldGeneration();
-        UpdatePlayerChunks();
 
         physics.initPlayer(player);
     }
@@ -83,6 +83,10 @@ public class GameServer {
                 world.GenChunk(ChunkPos);
             }
         }
+    }
+
+    void onChunksGenerated(boolean idkwhyitshere_cantremoveit)
+    {
         world.loadedChunks.forEach((Vector2i pos, Chunk chunk) -> {
             world.UpdateChunk(chunk);
         });
@@ -112,6 +116,11 @@ public class GameServer {
         entities.add(e);
         physics.AddRigidbody(e);
     }
+    public void Shutdown()
+    {
+        world.Shutdown();
+        physics.Shutdown();
+    }
     public void initMeshEntity(Entity e)
     {
         entities.add(e);
@@ -132,7 +141,9 @@ public class GameServer {
         if(!world.isBussyLoadingChunks() && isPlayerStartLocked)
         {
             isPlayerStartLocked = false;
-            player.position = new Vector3f(0, 10, 0);
+            player.position = new Vector3f(0, 20, 0);
+            UpdatePlayerChunks();
+            Main.GetRenderer().PackageEntityRenderers();
             System.out.println("Done Generating Chunks!");
         }
     }

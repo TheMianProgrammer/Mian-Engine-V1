@@ -1,6 +1,7 @@
 package obj.objects;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import javax.vecmath.Vector3f;
@@ -16,7 +17,7 @@ public class Chunk {
     World world;
     public ChunkData data;
 
-    public Map<Vector3i, Block> Blocks = new HashMap<>();
+    public Map<Vector3i, Block> Blocks = new LinkedHashMap<>();
 
     public Chunk(World world)
     {

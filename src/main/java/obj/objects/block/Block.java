@@ -1,6 +1,7 @@
 package obj.objects.block;
 
 import org.joml.Vector3f;
+import org.joml.Vector3i;
 
 import engine.render.block.BlockRenderer;
 import engine.render.texture.Texture;
@@ -14,7 +15,7 @@ public class Block {
 
     Entity entity;
     int texID;
-    Vector3f position;
+    Vector3i position;
     Texture texture;
     World world;
 
@@ -42,7 +43,7 @@ public class Block {
         this.texture = texture;
     }
 
-    public Block(Vector3f position, int texID, World world){
+    public Block(Vector3i position, int texID, World world){
         this.texID = texID;
         this.position = position;
         this.texID = texID;
@@ -51,7 +52,7 @@ public class Block {
 
     public void LoadEntity(EntityLoader entityLoader)
     {
-        this.entity = entityLoader.LoadEntity("assets/obj/basics/Cube.obj", position.mul(2), new Vector3f(1, 1, 1), texture, true);
+        this.entity = entityLoader.LoadEntity("assets/obj/basics/Cube.obj", new Vector3f(position), new Vector3f(1, 1, 1), texture, true);
         entityLoader.initEntityCollider(this.entity, false);
     }
 
@@ -60,7 +61,7 @@ public class Block {
         return this.entity;
     }
 
-    public Vector3f GetPosition()
+    public Vector3i GetPosition()
     {
         return this.position;
     }

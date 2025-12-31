@@ -80,6 +80,13 @@ public class Main{
         }
 
         window.destroy();
+        server.Shutdown();
+        System.exit(0);
+    }
+
+    public static Window GetWindow()
+    {
+        return window;
     }
 
     public static Renderer GetRenderer()

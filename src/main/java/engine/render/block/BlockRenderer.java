@@ -37,12 +37,12 @@ public class BlockRenderer {
     {
         Vector3f defaultScale = new Vector3f(1, 1, 1);
 
-        front = loader.LoadEntity("assets/obj/basics/Plane.obj", new Vector3f(block.GetPosition()).add(new Vector3f(Direction.FRONT.offset)), defaultScale, new Vector3f(90, 0, 0), block.GetTexture(), true);
-        back = loader.LoadEntity("assets/obj/basics/Plane.obj",  new Vector3f(block.GetPosition()).add(new Vector3f(Direction.BACK.offset)), defaultScale, new Vector3f(-90, 0, 0), block.GetTexture(), true);
-        left = loader.LoadEntity("assets/obj/basics/Plane.obj",  new Vector3f(block.GetPosition()).add(new Vector3f(Direction.LEFT.offset)), defaultScale, new Vector3f(0, 0, 90), block.GetTexture(), true);
-        right = loader.LoadEntity("assets/obj/basics/Plane.obj", new Vector3f(block.GetPosition()).add(new Vector3f(Direction.RIGHT.offset)), defaultScale, new Vector3f(0, 0, -90), block.GetTexture(), true);
-        top = loader.LoadEntity("assets/obj/basics/Plane.obj",   new Vector3f(block.GetPosition()).add(new Vector3f(Direction.UP.offset)), defaultScale, new Vector3f(0, 0, 0), block.GetTexture(), true);
-        bottom = loader.LoadEntity("assets/obj/basics/Plane.obj",new Vector3f(block.GetPosition()).add(new Vector3f(Direction.DOWN.offset)), defaultScale, new Vector3f(-180, 0, 0), block.GetTexture(), true);
+        front = loader.LoadEntity("assets/obj/cube/Cubewall.obj", new Vector3f(block.GetPosition()).add(new Vector3f(Direction.FRONT.offset)), defaultScale, new Vector3f(90, 0, 0), block.GetTexture(), true);
+        back = loader.LoadEntity("assets/obj/cube/Cubewall.obj",  new Vector3f(block.GetPosition()).add(new Vector3f(Direction.BACK.offset)), defaultScale, new Vector3f(-90, 0, 0), block.GetTexture(), true);
+        left = loader.LoadEntity("assets/obj/cube/Cubewall.obj",  new Vector3f(block.GetPosition()).add(new Vector3f(Direction.LEFT.offset)), defaultScale, new Vector3f(0, 0, 90), block.GetTexture(), true);
+        right = loader.LoadEntity("assets/obj/cube/Cubewall.obj", new Vector3f(block.GetPosition()).add(new Vector3f(Direction.RIGHT.offset)), defaultScale, new Vector3f(0, 0, -90), block.GetTexture(), true);
+        top = loader.LoadEntity("assets/obj/cube/Cubewall.obj",   new Vector3f(block.GetPosition()).add(new Vector3f(Direction.UP.offset)), defaultScale, new Vector3f(0, 0, 0), block.GetTexture(), true);
+        bottom = loader.LoadEntity("assets/obj/cube/Cubewall.obj",new Vector3f(block.GetPosition()).add(new Vector3f(Direction.DOWN.offset)), defaultScale, new Vector3f(-180, 0, 0), block.GetTexture(), true);
     }
 
     public void ActivateRendering(EntityLoader loader)

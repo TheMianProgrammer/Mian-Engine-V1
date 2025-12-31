@@ -46,7 +46,7 @@ public class WorldRenderer {
 
         for (Direction dir : Direction.values())
         {
-            Vector3i neighborPos  = new Vector3i(Pos).add(new Vector3i(dir.offset).mul(2));
+            Vector3i neighborPos  = new Vector3i(Pos).add(new Vector3i(dir.offset));
             Block neighborBlock = world.blockList.get(neighborPos);
             BlockRenderer neighbor = null;
             if(neighborBlock != null)

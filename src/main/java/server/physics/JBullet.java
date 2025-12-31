@@ -102,6 +102,10 @@ public class JBullet {
 
         dynamicsWorld.addRigidBody(body);
     }
+    public void Shutdown()
+    {
+        dynamicsWorld.destroy();
+    }
     public void AddRigidbodyMesh(Entity entity, boolean isStatic) {
         float[] verts = entity.getFlattenVertecies();
 
@@ -173,6 +177,7 @@ public class JBullet {
         }
 
         UpdatePlayerPhysics(player);
+        
     }
     void UpdatePlayerPhysics(Player player)
     {
